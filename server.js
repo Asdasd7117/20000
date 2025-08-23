@@ -5,7 +5,7 @@ const SERVICES = {
     "بكين": "https://www.ecsc-expat.sy/beijing-service",
     "أثينا": "https://www.ecsc-expat.sy/athens-service",
     "القاهرة": "https://www.ecsc-expat.sy/cairo-service"
-    // ⚠️ حذفنا الرياض
+    // ⚠️ الرياض محذوفة
 };
 
 const TYPES = ["جواز مستعجل", "جواز عادي"];
@@ -17,7 +17,10 @@ const USER_DATA = {
 };
 
 (async () => {
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    });
     const page = await browser.newPage();
 
     while (true) {
@@ -38,10 +41,10 @@ const USER_DATA = {
                     }
                 }
             } catch (err) {
-                console.log(`⚠️ خطأ في الاتصال بالسفارة ${embassy}: ${err}`);
+                console.log(`⚠️ خطأ في الاتصال بالسفارة ${embassy}: ${err.message}`);
             }
         }
-        // انتظر ثانية وحدة فقط
+        // انتظر ثانية واحدة
         await new Promise(r => setTimeout(r, 1000));
     }
 })();
