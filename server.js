@@ -43,7 +43,6 @@ const USER_DATA = {
                 console.log(`⚠️ خطأ في الاتصال بالسفارة ${embassy}: ${err.message}`);
             }
         }
-        // انتظر ثانية وحدة
         await new Promise(r => setTimeout(r, 1000));
     }
 })();
