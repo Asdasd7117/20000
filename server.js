@@ -5,7 +5,6 @@ const SERVICES = {
     "بكين": "https://www.ecsc-expat.sy/beijing-service",
     "أثينا": "https://www.ecsc-expat.sy/athens-service",
     "القاهرة": "https://www.ecsc-expat.sy/cairo-service"
-    // ⚠️ الرياض محذوفة
 };
 
 const TYPES = ["جواز مستعجل", "جواز عادي"];
@@ -44,7 +43,7 @@ const USER_DATA = {
                 console.log(`⚠️ خطأ في الاتصال بالسفارة ${embassy}: ${err.message}`);
             }
         }
-        // انتظر ثانية واحدة
+        // انتظر ثانية وحدة
         await new Promise(r => setTimeout(r, 1000));
     }
 })();
