@@ -8,12 +8,7 @@ const SERVICES = {
 };
 
 const TYPES = ["جواز مستعجل", "جواز عادي"];
-
-const USER_DATA = {
-    email: "youremail@example.com",
-    name: "اسمك الكامل",
-    number_of_people: 1
-};
+const USER_DATA = { email: "youremail@example.com", name: "اسمك الكامل", number_of_people: 1 };
 
 (async () => {
     const browser = await puppeteer.launch({
@@ -27,13 +22,11 @@ const USER_DATA = {
             try {
                 await page.goto(url, { waitUntil: 'networkidle2' });
                 const content = await page.content();
-
                 for (const t of TYPES) {
                     if (content.includes(t)) {
                         console.log("🚨 حجز متاح!");
                         console.log(`السفارة: ${embassy}`);
                         console.log(`النوع: ${t}`);
-                        console.log("بيانات جاهزة للنسخ:");
                         console.log(USER_DATA);
                         console.log(`رابط الحجز المباشر: ${url}`);
                         console.log("-".repeat(50));
