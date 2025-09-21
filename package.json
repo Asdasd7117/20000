@@ -1,11 +1,12 @@
 {
-  "name": "mini-meet-server",
+  "name": "video-meet-app",
   "version": "1.0.0",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.7.2",
-    "nanoid": "^4.0.0"
+    "socket.io": "^4.7.2"
   }
 }
