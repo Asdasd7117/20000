@@ -10,13 +10,15 @@
     <h2>إنشاء غرفة مكالمة مؤقتة</h2>
     <button id="createBtn">إنشاء غرفة جديدة</button>
 
-    <div id="linkDiv">
-      <input type="text" id="roomLink" readonly placeholder="رابط الغرفة سيظهر هنا">
-      <button id="copyBtn">نسخ الرابط</button>
+    <!-- الرابط مع زر النسخ -->
+    <div id="linkDiv" style="margin-top:20px;">
+      <span id="roomLink" style="font-size:22px; font-weight:bold; color:#fff;"></span>
+      <button id="copyBtn" style="margin-left:10px; padding:10px 15px; font-size:16px; cursor:pointer; border:none; border-radius:8px; background:#4caf50; color:#fff;">
+        نسخ
+      </button>
     </div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
