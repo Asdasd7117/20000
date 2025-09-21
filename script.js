@@ -1,65 +1,104 @@
 const socket = io();
 
-// ====== العناصر ======
+const createBtn = document.getElementById("createBtn");
+const linkDiv = document.getElementById("linkDiv");
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
 const endCallBtn = document.getElementById("endCall");
-const switchBtn = document.getElementById("switchCamera");
+const switchBtn = document.getElementById("switchCamera"); // زر التبديل بين الكاميرات
 const msgInput = document.getElementById("msgInput");
 const sendBtn = document.getElementById("sendBtn");
 const messagesDiv = document.getElementById("messages");
-const joinPopup = document.getElementById("joinRequest");
-const approveBtn = document.getElementById("approveJoin");
-const denyBtn = document.getElementById("denyJoin");
 
-let localStream, pc;
-let useFrontCamera = true;
-let roomId, token;
-let pendingPeer = null; // لتخزين من يطلب الانضمام
+let localStream, pc, roomId, token;
+let usingFrontCamera = true;
 
-// ====== بدء الكاميرا ======
+// ---------------------- إنشاء غرفة ----------------------
+if (createBtn) {
+  createBtn.onclick = async () => {
+    const res = await fetch("/create-room");
+    const data = await res.json();
+    roomId = data.roomId;
+    token = data.token;
+    linkDiv.innerHTML = `<a href="${data.link}" target="_blank">${data.link}</a>`;
+    alert("انسخ الرابط وشاركه مع صديقك!");
+  };
+}
+
+// ---------------------- بدء الكاميرا ----------------------
 async function startLocal() {
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: useFrontCamera ? "user" : "environment" },
+    const constraints = {
+      video: { facingMode: usingFrontCamera ? "user" : "environment" },
       audio: true
-    });
-    localVideo.srcObject = localStream;
+    };
+    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+    if (localVideo) localVideo.srcObject = localStream;
   } catch (err) {
-    alert("فشل الوصول إلى الكاميرا/الميكروفون: " + err.message);
+    alert("لا يمكن الوصول إلى الكاميرا أو الميكروفون. تأكد من إعطاء الإذن.");
+    throw err;
   }
 }
 
-// ====== تبديل الكاميرا ======
-if (switchBtn) switchBtn.onclick = async () => {
-  useFrontCamera = !useFrontCamera;
-  if (!localStream) return;
-  localStream.getTracks().forEach(t => t.stop());
+// ---------------------- تبديل الكاميرا ----------------------
+if (switchBtn) {
+  switchBtn.onclick = async () => {
+    usingFrontCamera = !usingFrontCamera;
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+    await startLocal();
+    if (pc) {
+      const videoTrack = localStream.getVideoTracks()[0];
+      const sender = pc.getSenders().find(s => s.track.kind === "video");
+      if (sender) sender.replaceTrack(videoTrack);
+    }
+  };
+}
+
+// ---------------------- الانضمام للغرفة ----------------------
+async function joinRoom(rid, tok) {
+  const allow = confirm("الموافقة على الانضمام للغرفة؟"); // طلب موافقة المستخدم
+  if (!allow) return;
+
+  roomId = rid;
+  token = tok;
   await startLocal();
-  if (pc) {
-    const videoTrack = localStream.getVideoTracks()[0];
-    const sender = pc.getSenders().find(s => s.track.kind === "video");
-    if (sender) sender.replaceTrack(videoTrack);
-  }
-};
 
-// ====== إنهاء المكالمة ======
-if (endCallBtn) endCallBtn.onclick = () => {
-  if (localStream) localStream.getTracks().forEach(t => t.stop());
-  if (pc) pc.close();
-  socket.emit("leave-room", { roomId });
-  window.location.href = "/";
-};
+  pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-// ====== الدردشة ======
-if (sendBtn) sendBtn.onclick = () => {
-  const text = msgInput.value.trim();
-  if (!text || !roomId) return;
-  socket.emit("chat", { roomId, text, name: "أنت" });
-  addMessage("أنت: " + text);
-  msgInput.value = "";
-};
+  pc.ontrack = e => { remoteVideo.srcObject = e.streams[0]; };
 
+  pc.onicecandidate = ev => {
+    if (ev.candidate) socket.emit("candidate", { roomId, candidate: ev.candidate });
+  };
+
+  socket.emit("join-room", { roomId, token });
+}
+
+// ---------------------- إنهاء المكالمة ----------------------
+if (endCallBtn) {
+  endCallBtn.onclick = () => {
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (pc) pc.close();
+    socket.emit("leave-room", { roomId });
+    window.location.href = "/";
+  };
+}
+
+// ---------------------- الدردشة ----------------------
+if (sendBtn) {
+  sendBtn.onclick = () => {
+    const text = msgInput.value.trim();
+    if (!text) return;
+    socket.emit("chat", { roomId, text, name: "أنت" });
+    addMessage("أنت: " + text);
+    msgInput.value = "";
+  };
+}
+
+socket.on("chat", ({ name, text }) => { addMessage(`${name}: ${text}`); });
 function addMessage(msg) {
   const div = document.createElement("div");
   div.textContent = msg;
@@ -67,84 +106,8 @@ function addMessage(msg) {
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-socket.on("chat", ({ name, text }) => addMessage(`${name}: ${text}`));
-
-// ====== إعداد PeerConnection ======
-function createPC(remoteId) {
-  pc = new RTCPeerConnection({
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-  });
-
-  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-  pc.ontrack = e => {
-    remoteVideo.srcObject = e.streams[0];
-  };
-
-  pc.onicecandidate = ev => {
-    if (ev.candidate) {
-      socket.emit("candidate", { roomId, candidate: ev.candidate, to: remoteId });
-    }
-  };
-
-  pc.onconnectionstatechange = () => {
-    if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
-      remoteVideo.srcObject = null;
-    }
-  };
-
-  return pc;
-}
-
-// ====== قراءة الرابط ======
+// ---------------------- قراءة الرابط والانضمام ----------------------
 const params = new URLSearchParams(window.location.search);
 if (params.has("roomId") && params.has("t")) {
-  roomId = params.get("roomId");
-  token = params.get("t");
-  socket.emit("request-join", { roomId, token });
+  joinRoom(params.get("roomId"), params.get("t"));
 }
-
-// ====== طلب الانضمام ======
-socket.on("join-request", (peerId) => {
-  pendingPeer = peerId;
-  joinPopup.style.display = "block";
-});
-
-approveBtn.onclick = async () => {
-  joinPopup.style.display = "none";
-  if (!pendingPeer) return;
-  await startLocal();
-  pc = createPC(pendingPeer);
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  socket.emit("approve-join", { to: pendingPeer, sdp: offer, roomId });
-  pendingPeer = null;
-};
-
-denyBtn.onclick = () => {
-  if (pendingPeer) socket.emit("deny-join", { to: pendingPeer, roomId });
-  joinPopup.style.display = "none";
-  pendingPeer = null;
-};
-
-// ====== استقبال الإشارات ======
-socket.on("offer", async ({ from, sdp }) => {
-  await startLocal();
-  pc = createPC(from);
-  await pc.setRemoteDescription(sdp);
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  socket.emit("answer", { to: from, sdp: answer });
-});
-
-socket.on("answer", async ({ from, sdp }) => {
-  if (pc) await pc.setRemoteDescription(sdp);
-});
-
-socket.on("candidate", ({ from, candidate }) => {
-  if (pc) pc.addIceCandidate(candidate).catch(console.error);
-});
-
-socket.on("user-left", () => {
-  remoteVideo.srcObject = null;
-});
