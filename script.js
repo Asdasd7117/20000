@@ -1,4 +1,4 @@
-const SERVER_URL = ""; // اتركه فارغ إذا نفس السيرفر
+const SERVER_URL = "https://two0000-lxps.onrender.com"; // رابط السيرفر
 const socket = io(SERVER_URL);
 
 // عناصر HTML
@@ -14,28 +14,32 @@ const endCallBtn = document.getElementById("endCall");
 const switchCamBtn = document.getElementById("switchCamera");
 
 let localStream;
-let currentCamera = "user"; // كاميرا أمامية
-const pcs = {};
+let currentCamera = "user";
+let pcs = {};
 const ICE_CONFIG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 let roomId, token, selfId;
 
 // ------------------- إنشاء الغرفة -------------------
 if (createBtn) {
   createBtn.onclick = async () => {
-    const res = await fetch("/create-room");
-    const data = await res.json();
-    roomId = data.roomId;
-    token = data.token;
+    try {
+      const res = await fetch(`${SERVER_URL}/create-room`);
+      const data = await res.json();
+      roomId = data.roomId;
+      token = data.token;
 
-    roomLink.textContent = data.link;
+      roomLink.textContent = data.link;
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(data.link)
+          .then(() => alert("تم نسخ الرابط!"))
+          .catch(() => alert("حدث خطأ أثناء النسخ"));
+      };
 
-    copyBtn.onclick = () => {
-      navigator.clipboard.writeText(data.link)
-        .then(() => alert("تم نسخ الرابط!"))
-        .catch(() => alert("حدث خطأ أثناء النسخ"));
-    };
-
-    alert("انسخ الرابط وشاركه مع صديقك!");
+      alert("انسخ الرابط وشاركه مع صديقك!");
+    } catch (err) {
+      alert("حدث خطأ أثناء إنشاء الغرفة");
+      console.error(err);
+    }
   };
 }
 
@@ -49,14 +53,9 @@ async function startLocal() {
 if (switchCamBtn) {
   switchCamBtn.onclick = async () => {
     currentCamera = currentCamera === "user" ? "environment" : "user";
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-    }
+    if (localStream) localStream.getTracks().forEach(track => track.stop());
     await startLocal();
-    // تحديث كل PeerConnections
-    Object.values(pcs).forEach(pc => {
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    });
+    Object.values(pcs).forEach(pc => localStream.getTracks().forEach(track => pc.addTrack(track, localStream)));
   };
 }
 
@@ -106,9 +105,7 @@ socket.on("joined", async ({ selfId: id, others }) => {
   }
 });
 
-socket.on("user-joined", async otherId => {
-  createPC(otherId);
-});
+socket.on("user-joined", async otherId => createPC(otherId));
 
 socket.on("offer", async ({ from, sdp }) => {
   const pc = createPC(from);
@@ -149,9 +146,7 @@ if (sendBtn) {
   };
 }
 
-socket.on("chat", ({ from, text, name }) => {
-  addMessage(`${name || from}: ${text}`);
-});
+socket.on("chat", ({ from, text, name }) => addMessage(`${name || from}: ${text}`));
 
 function addMessage(msg) {
   const div = document.createElement("div");
