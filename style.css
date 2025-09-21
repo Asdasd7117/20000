@@ -5,71 +5,12 @@ body {
   font-family: Arial, sans-serif;
   background: #000;
   color: #fff;
-  overflow: hidden; /* يمنع تحريك الصفحة */
+  overflow: hidden;
   position: relative;
-  touch-action: none; /* يمنع السحب على الهاتف */
 }
 
-/* index.html */
-.container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  text-align: center;
-  padding: 20px;
-}
-
-.container h2 {
-  margin-bottom: 30px;
-  font-size: 32px; /* تكبير الكتابة */
-  font-weight: bold;
-  color: #fff;
-}
-
-#createBtn {
-  padding: 25px 50px; /* جعل الزر أكبر */
-  font-size: 24px;    /* تكبير الكتابة داخل الزر */
-  background: #ff9800;
-  border: none;
-  border-radius: 15px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-#createBtn:hover { background: #e68900; }
-
-#linkDiv {
-  margin-top: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-#roomLink {
-  font-size: 20px;  /* تكبير رابط الغرفة */
-  font-weight: bold;
-  color: #4caf50;
-  word-break: break-all;
-  margin-bottom: 10px;
-}
-
-#copyBtn {
-  padding: 15px 35px; /* زر النسخ أكبر */
-  font-size: 20px;
-  background: #2196f3;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-#copyBtn:hover { background: #1976d2; }
-
-/* room.html */
-#remoteVideo {
+/* الفيديو البعيد يغطي الشاشة */
+#remoteContainer video {
   position: absolute;
   top: 0;
   left: 0;
@@ -77,14 +18,16 @@ body {
   height: 100vh;
   object-fit: cover;
   background: #000;
+  z-index: 1;
 }
 
+/* الفيديو المحلي صغير في الزاوية */
 #localVideo {
   position: absolute;
   bottom: 20px;
   right: 20px;
-  width: 160px;   
-  height: 200px;
+  width: 140px;
+  height: 180px;
   border-radius: 12px;
   border: 2px solid #fff;
   object-fit: cover;
@@ -92,50 +35,46 @@ body {
   z-index: 5;
 }
 
-#endCall {
+/* أزرار التحكم */
+#endCall, #switchCamera {
   position: absolute;
   top: 20px;
+  padding: 15px 30px;
+  font-size: 18px;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  z-index: 10;
+}
+
+#endCall {
   left: 50%;
   transform: translateX(-50%);
-  padding: 18px 35px;
-  font-size: 20px;
   background: red;
   color: #fff;
-  border: none;
-  border-radius: 35px;
-  cursor: pointer;
-  box-shadow: 0 5px 10px rgba(0,0,0,0.4);
-  z-index: 10;
 }
 
 #endCall:hover { background: darkred; }
 
 #switchCamera {
-  position: absolute;
-  top: 20px;
   right: 20px;
-  padding: 15px 30px;
-  font-size: 18px;
   background: #ff9800;
   color: #fff;
-  border: none;
-  border-radius: 25px;
-  cursor: pointer;
-  z-index: 10;
 }
 
 #switchCamera:hover { background: #e68900; }
 
+/* صندوق الدردشة */
 .chat-area {
   position: absolute;
   right: 0;
   top: 0;
-  width: 300px; /* توسيع الصندوق */
+  width: 280px;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #1e1e1e;
-  overflow: hidden;
+  background: rgba(30,30,30,0.9);
   z-index: 10;
 }
 
@@ -148,10 +87,10 @@ body {
 
 .messages div {
   background: #333;
-  padding: 12px 16px;
+  padding: 10px 15px;
   border-radius: 12px;
   margin-bottom: 10px;
-  font-size: 18px; /* تكبير الكتابة */
+  font-size: 16px;
 }
 
 .input-area {
@@ -162,21 +101,44 @@ body {
 
 .input-area input {
   flex: 1;
-  padding: 12px;
+  padding: 10px;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   margin-left: 5px;
-  font-size: 18px; /* تكبير الكتابة */
+  font-size: 16px;
 }
 
 .input-area button {
-  padding: 12px 18px;
+  padding: 10px 15px;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #4caf50;
   color: #fff;
   cursor: pointer;
-  font-size: 18px; /* تكبير الكتابة */
+  font-size: 16px;
 }
 
 .input-area button:hover { background: #388e3c; }
+
+/* رابط الغرفة وزر النسخ */
+#roomLink {
+  margin-top: 20px;
+  font-size: 18px;
+  color: #fff;
+  word-break: break-all;
+  text-align: center;
+}
+
+#copyBtn {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 12px 25px;
+  font-size: 16px;
+  background: #2196f3;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+#copyBtn:hover { background: #1976d2; }
