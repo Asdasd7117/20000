@@ -1,7 +1,6 @@
-const SERVER_URL = "https://two0000-lxps.onrender.com"; // رابط السيرفر
+const SERVER_URL = window.location.origin; // يتوافق مع Render
 const socket = io(SERVER_URL);
 
-// عناصر HTML
 const createBtn = document.getElementById("createBtn");
 const roomLink = document.getElementById("roomLink");
 const copyBtn = document.getElementById("copyBtn");
@@ -14,10 +13,11 @@ const endCallBtn = document.getElementById("endCall");
 const switchCamBtn = document.getElementById("switchCamera");
 
 let localStream;
-let currentCamera = "user";
 let pcs = {};
-const ICE_CONFIG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+let currentCamera = "user";
 let roomId, token, selfId;
+
+const ICE_CONFIG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
 // ------------------- إنشاء الغرفة -------------------
 if (createBtn) {
@@ -28,25 +28,31 @@ if (createBtn) {
       roomId = data.roomId;
       token = data.token;
 
-      roomLink.textContent = data.link;
+      roomLink.textContent = `${window.location.origin}${data.link}`;
       copyBtn.onclick = () => {
-        navigator.clipboard.writeText(data.link)
+        navigator.clipboard.writeText(`${window.location.origin}${data.link}`)
           .then(() => alert("تم نسخ الرابط!"))
           .catch(() => alert("حدث خطأ أثناء النسخ"));
       };
 
       alert("انسخ الرابط وشاركه مع صديقك!");
     } catch (err) {
-      alert("حدث خطأ أثناء إنشاء الغرفة");
       console.error(err);
+      alert("حدث خطأ أثناء إنشاء الغرفة");
     }
   };
 }
 
-// ------------------- بدء الكاميرا -------------------
+// ------------------- الكاميرا المحلية -------------------
 async function startLocal() {
-  localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentCamera }, audio: true });
-  if (localVideo) localVideo.srcObject = localStream;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentCamera }, audio: true });
+    localVideo.srcObject = localStream;
+    await localVideo.play();
+  } catch (err) {
+    console.error("فشل الوصول للكاميرا والميكروفون:", err);
+    alert("الرجاء السماح بالوصول للكاميرا والميكروفون");
+  }
 }
 
 // ------------------- تبديل الكاميرا -------------------
@@ -57,6 +63,14 @@ if (switchCamBtn) {
     await startLocal();
     Object.values(pcs).forEach(pc => localStream.getTracks().forEach(track => pc.addTrack(track, localStream)));
   };
+}
+
+// ------------------- الانضمام للغرفة -------------------
+async function joinRoom(rid, tok) {
+  roomId = rid;
+  token = tok;
+  await startLocal();
+  socket.emit("join-room", { roomId, token });
 }
 
 // ------------------- إنشاء PeerConnection -------------------
@@ -74,9 +88,7 @@ function createPC(remoteId) {
       vid.id = "remote_" + remoteId;
       vid.autoplay = true;
       vid.playsInline = true;
-      vid.style.width = "100vw";
-      vid.style.height = "100vh";
-      vid.style.objectFit = "cover";
+      vid.controls = false;
       remoteContainer.appendChild(vid);
     }
     vid.srcObject = e.streams[0];
@@ -92,55 +104,35 @@ function createPC(remoteId) {
 // ------------------- WebSocket -------------------
 socket.on("joined", async ({ selfId: id, others }) => {
   selfId = id;
-  // إرسال إشعار للطرف الآخر للانضمام (طلب الموافقة)
-  others.forEach(async otherId => {
+  for (let otherId of others) {
     const pc = createPC(otherId);
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     socket.emit("offer", { to: otherId, sdp: offer });
-  });
+  }
 });
 
 socket.on("user-joined", async otherId => createPC(otherId));
 
 socket.on("offer", async ({ from, sdp }) => {
-  // نعرض زر الانضمام للطرف الثاني
-  const joinBtn = document.createElement("button");
-  joinBtn.textContent = "انضم إلى الغرفة";
-  joinBtn.style.fontSize = "18px";
-  joinBtn.style.padding = "12px 25px";
-  joinBtn.style.position = "absolute";
-  joinBtn.style.top = "50%";
-  joinBtn.style.left = "50%";
-  joinBtn.style.transform = "translate(-50%, -50%)";
-  joinBtn.style.zIndex = "999";
-  document.body.appendChild(joinBtn);
-
-  joinBtn.onclick = async () => {
-    joinBtn.remove();
-    await startLocal();
-    const pc = createPC(from);
-    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    socket.emit("answer", { to: from, sdp: answer });
-  };
+  const pc = createPC(from);
+  await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  socket.emit("answer", { to: from, sdp: answer });
 });
 
 socket.on("answer", async ({ from, sdp }) => {
   const pc = pcs[from];
-  if (!pc) return;
-  await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+  if (pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp));
 });
 
 socket.on("candidate", ({ from, candidate }) => {
   const pc = pcs[from];
-  if (!pc) return;
-  pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.error);
+  if (pc) pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.error);
 });
 
 socket.on("room-error", msg => alert(msg));
-
 socket.on("user-left", id => {
   const vid = document.getElementById("remote_" + id);
   if (vid) vid.remove();
@@ -158,7 +150,7 @@ if (sendBtn) {
   };
 }
 
-socket.on("chat", ({ from, text, name }) => addMessage(`${name || from}: ${text}`));
+socket.on("chat", ({ text, name }) => addMessage(`${name || "طرف آخر"}: ${text}`));
 
 function addMessage(msg) {
   const div = document.createElement("div");
@@ -177,26 +169,8 @@ if (endCallBtn) {
   };
 }
 
-// ------------------- التحقق من الرابط عند فتح room.html -------------------
+// ------------------- تحقق من الرابط عند فتح room.html -------------------
 const params = new URLSearchParams(window.location.search);
 if (params.has("roomId") && params.has("t")) {
-  roomId = params.get("roomId");
-  token = params.get("t");
-  // هنا لن نبدأ الفيديو مباشرة، بل ننتظر موافقة المستخدم
-  // يظهر زر الانضمام تلقائياً إذا لم يكن هناك peer offer
-  const joinBtn = document.createElement("button");
-  joinBtn.textContent = "انضم إلى الغرفة";
-  joinBtn.style.fontSize = "18px";
-  joinBtn.style.padding = "12px 25px";
-  joinBtn.style.position = "absolute";
-  joinBtn.style.top = "50%";
-  joinBtn.style.left = "50%";
-  joinBtn.style.transform = "translate(-50%, -50%)";
-  joinBtn.style.zIndex = "999";
-  document.body.appendChild(joinBtn);
-
-  joinBtn.onclick = async () => {
-    joinBtn.remove();
-    await joinRoom(roomId, token);
-  };
+  joinRoom(params.get("roomId"), params.get("t"));
 }
