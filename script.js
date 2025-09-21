@@ -1,6 +1,6 @@
 const socket = io();
 
-// العناصر
+// ====== العناصر ======
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
 const endCallBtn = document.getElementById("endCall");
@@ -17,27 +17,33 @@ let useFrontCamera = true;
 let roomId, token;
 let pendingPeer = null; // لتخزين من يطلب الانضمام
 
-// ------------------ بدء الكاميرا ------------------
+// ====== بدء الكاميرا ======
 async function startLocal() {
-  localStream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: useFrontCamera ? "user" : "environment" },
-    audio: true
-  });
-  localVideo.srcObject = localStream;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: useFrontCamera ? "user" : "environment" },
+      audio: true
+    });
+    localVideo.srcObject = localStream;
+  } catch (err) {
+    alert("فشل الوصول إلى الكاميرا/الميكروفون: " + err.message);
+  }
 }
 
-// ------------------ تبديل الكاميرا ------------------
+// ====== تبديل الكاميرا ======
 if (switchBtn) switchBtn.onclick = async () => {
   useFrontCamera = !useFrontCamera;
   if (!localStream) return;
   localStream.getTracks().forEach(t => t.stop());
   await startLocal();
-  const videoTrack = localStream.getVideoTracks()[0];
-  const sender = pc.getSenders().find(s => s.track.kind === "video");
-  if (sender) sender.replaceTrack(videoTrack);
+  if (pc) {
+    const videoTrack = localStream.getVideoTracks()[0];
+    const sender = pc.getSenders().find(s => s.track.kind === "video");
+    if (sender) sender.replaceTrack(videoTrack);
+  }
 };
 
-// ------------------ إنهاء المكالمة ------------------
+// ====== إنهاء المكالمة ======
 if (endCallBtn) endCallBtn.onclick = () => {
   if (localStream) localStream.getTracks().forEach(t => t.stop());
   if (pc) pc.close();
@@ -45,7 +51,7 @@ if (endCallBtn) endCallBtn.onclick = () => {
   window.location.href = "/";
 };
 
-// ------------------ الدردشة ------------------
+// ====== الدردشة ======
 if (sendBtn) sendBtn.onclick = () => {
   const text = msgInput.value.trim();
   if (!text || !roomId) return;
@@ -53,36 +59,52 @@ if (sendBtn) sendBtn.onclick = () => {
   addMessage("أنت: " + text);
   msgInput.value = "";
 };
+
 function addMessage(msg) {
   const div = document.createElement("div");
   div.textContent = msg;
   messagesDiv.appendChild(div);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
+
 socket.on("chat", ({ name, text }) => addMessage(`${name}: ${text}`));
 
-// ------------------ WebRTC ------------------
+// ====== إعداد PeerConnection ======
 function createPC(remoteId) {
-  pc = new RTCPeerConnection({ iceServers:[{ urls: "stun:stun.l.google.com:19302" }] });
+  pc = new RTCPeerConnection({
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  });
+
   localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-  pc.ontrack = e => { remoteVideo.srcObject = e.streams[0]; };
-  pc.onicecandidate = ev => {
-    if (ev.candidate) socket.emit("candidate", { roomId, candidate: ev.candidate, to: remoteId });
+  pc.ontrack = e => {
+    remoteVideo.srcObject = e.streams[0];
   };
+
+  pc.onicecandidate = ev => {
+    if (ev.candidate) {
+      socket.emit("candidate", { roomId, candidate: ev.candidate, to: remoteId });
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
+      remoteVideo.srcObject = null;
+    }
+  };
+
   return pc;
 }
 
-// ------------------ قراءة الرابط ------------------
+// ====== قراءة الرابط ======
 const params = new URLSearchParams(window.location.search);
 if (params.has("roomId") && params.has("t")) {
   roomId = params.get("roomId");
   token = params.get("t");
-  // اطلب الانضمام
   socket.emit("request-join", { roomId, token });
 }
 
-// ------------------ طلب الانضمام ------------------
+// ====== طلب الانضمام ======
 socket.on("join-request", (peerId) => {
   pendingPeer = peerId;
   joinPopup.style.display = "block";
@@ -105,7 +127,7 @@ denyBtn.onclick = () => {
   pendingPeer = null;
 };
 
-// ------------------ استقبال الإشارات ------------------
+// ====== استقبال الإشارات ======
 socket.on("offer", async ({ from, sdp }) => {
   await startLocal();
   pc = createPC(from);
@@ -114,10 +136,15 @@ socket.on("offer", async ({ from, sdp }) => {
   await pc.setLocalDescription(answer);
   socket.emit("answer", { to: from, sdp: answer });
 });
+
 socket.on("answer", async ({ from, sdp }) => {
-  await pc.setRemoteDescription(sdp);
+  if (pc) await pc.setRemoteDescription(sdp);
 });
+
 socket.on("candidate", ({ from, candidate }) => {
   if (pc) pc.addIceCandidate(candidate).catch(console.error);
 });
-socket.on("user-left", () => { remoteVideo.srcObject = null; });
+
+socket.on("user-left", () => {
+  remoteVideo.srcObject = null;
+});
