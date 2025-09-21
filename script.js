@@ -59,14 +59,6 @@ if (switchCamBtn) {
   };
 }
 
-// ------------------- الانضمام للغرفة -------------------
-async function joinRoom(rid, tok) {
-  await startLocal();
-  roomId = rid;
-  token = tok;
-  socket.emit("join-room", { roomId, token });
-}
-
 // ------------------- إنشاء PeerConnection -------------------
 function createPC(remoteId) {
   if (pcs[remoteId]) return pcs[remoteId];
@@ -82,6 +74,9 @@ function createPC(remoteId) {
       vid.id = "remote_" + remoteId;
       vid.autoplay = true;
       vid.playsInline = true;
+      vid.style.width = "100vw";
+      vid.style.height = "100vh";
+      vid.style.objectFit = "cover";
       remoteContainer.appendChild(vid);
     }
     vid.srcObject = e.streams[0];
@@ -97,22 +92,39 @@ function createPC(remoteId) {
 // ------------------- WebSocket -------------------
 socket.on("joined", async ({ selfId: id, others }) => {
   selfId = id;
-  for (let otherId of others) {
+  // إرسال إشعار للطرف الآخر للانضمام (طلب الموافقة)
+  others.forEach(async otherId => {
     const pc = createPC(otherId);
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     socket.emit("offer", { to: otherId, sdp: offer });
-  }
+  });
 });
 
 socket.on("user-joined", async otherId => createPC(otherId));
 
 socket.on("offer", async ({ from, sdp }) => {
-  const pc = createPC(from);
-  await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  socket.emit("answer", { to: from, sdp: answer });
+  // نعرض زر الانضمام للطرف الثاني
+  const joinBtn = document.createElement("button");
+  joinBtn.textContent = "انضم إلى الغرفة";
+  joinBtn.style.fontSize = "18px";
+  joinBtn.style.padding = "12px 25px";
+  joinBtn.style.position = "absolute";
+  joinBtn.style.top = "50%";
+  joinBtn.style.left = "50%";
+  joinBtn.style.transform = "translate(-50%, -50%)";
+  joinBtn.style.zIndex = "999";
+  document.body.appendChild(joinBtn);
+
+  joinBtn.onclick = async () => {
+    joinBtn.remove();
+    await startLocal();
+    const pc = createPC(from);
+    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit("answer", { to: from, sdp: answer });
+  };
 });
 
 socket.on("answer", async ({ from, sdp }) => {
@@ -168,7 +180,23 @@ if (endCallBtn) {
 // ------------------- التحقق من الرابط عند فتح room.html -------------------
 const params = new URLSearchParams(window.location.search);
 if (params.has("roomId") && params.has("t")) {
-  const rid = params.get("roomId");
-  const tok = params.get("t");
-  joinRoom(rid, tok);
+  roomId = params.get("roomId");
+  token = params.get("t");
+  // هنا لن نبدأ الفيديو مباشرة، بل ننتظر موافقة المستخدم
+  // يظهر زر الانضمام تلقائياً إذا لم يكن هناك peer offer
+  const joinBtn = document.createElement("button");
+  joinBtn.textContent = "انضم إلى الغرفة";
+  joinBtn.style.fontSize = "18px";
+  joinBtn.style.padding = "12px 25px";
+  joinBtn.style.position = "absolute";
+  joinBtn.style.top = "50%";
+  joinBtn.style.left = "50%";
+  joinBtn.style.transform = "translate(-50%, -50%)";
+  joinBtn.style.zIndex = "999";
+  document.body.appendChild(joinBtn);
+
+  joinBtn.onclick = async () => {
+    joinBtn.remove();
+    await joinRoom(roomId, token);
+  };
 }
