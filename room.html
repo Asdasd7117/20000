@@ -1,26 +1,36 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>غرفة المكالمة</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>غرفة المكالمة</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <video id="remoteVideo" autoplay playsinline></video>
-  <video id="localVideo" autoplay muted playsinline></video>
 
-  <button id="endCall">إغلاق المكالمة</button>
-  <button id="switchCamera">تبديل الكاميرا</button>
+<!-- الفيديو البعيد -->
+<div id="remoteContainer"></div>
 
-  <div class="chat-area">
-    <div class="messages" id="messages"></div>
-    <div class="input-area">
-      <input type="text" id="msgInput" placeholder="اكتب رسالة...">
-      <button id="sendBtn">إرسال</button>
-    </div>
+<!-- الفيديو المحلي -->
+<video id="localVideo" autoplay playsinline muted></video>
+
+<!-- أزرار التحكم -->
+<button id="endCall">إنهاء المكالمة</button>
+<button id="switchCamera">تبديل الكاميرا</button>
+
+<!-- الدردشة -->
+<div class="chat-area">
+  <div class="messages" id="messages"></div>
+  <div class="input-area">
+    <input id="msgInput" type="text" placeholder="اكتب رسالة">
+    <button id="sendBtn">إرسال</button>
   </div>
+</div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="script.js"></script>
+<!-- رابط الغرفة للنسخ (لمنشئ الغرفة) -->
+<div id="roomLink"></div>
+<button id="copyBtn">نسخ الرابط</button>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
