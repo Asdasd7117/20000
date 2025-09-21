@@ -6,21 +6,16 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="room">
-    <h2>غرفة الفيديو</h2>
-    <div class="videos">
-      <video id="localVideo" autoplay playsinline muted></video>
-      <video id="remoteVideo" autoplay playsinline></video>
-    </div>
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay muted playsinline></video>
 
-    <div class="controls">
-      <button id="toggleCamera">📷 تبديل الكاميرا</button>
-      <button id="leaveBtn">❌ إنهاء المكالمة</button>
-    </div>
+  <button id="endCall">إغلاق المكالمة</button>
+  <button id="switchCamera">تبديل الكاميرا</button>
 
-    <div class="chat">
-      <div id="messages"></div>
-      <input id="chatInput" placeholder="اكتب رسالة...">
+  <div class="chat-area">
+    <div class="messages" id="messages"></div>
+    <div class="input-area">
+      <input type="text" id="msgInput" placeholder="اكتب رسالة...">
       <button id="sendBtn">إرسال</button>
     </div>
   </div>
