@@ -1,41 +1,58 @@
-import puppeteer from 'puppeteer';
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const { nanoid } = require("nanoid");
 
-const SERVICES = {
-    "برلين": "https://www.ecsc-expat.sy/berlin-service",
-    "بكين": "https://www.ecsc-expat.sy/beijing-service",
-    "أثينا": "https://www.ecsc-expat.sy/athens-service",
-    "القاهرة": "https://www.ecsc-expat.sy/cairo-service"
-};
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+const PORT = process.env.PORT || 3000;
 
-const TYPES = ["جواز مستعجل", "جواز عادي"];
-const USER_DATA = { email: "youremail@example.com", name: "اسمك الكامل", number_of_people: 1 };
+const rooms = {};
+const socketToRoom = {};
 
-(async () => {
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"]
-    });
-    const page = await browser.newPage();
+io.on("connection", socket => {
+  console.log("🔌 connected:", socket.id);
 
-    while (true) {
-        for (const [embassy, url] of Object.entries(SERVICES)) {
-            try {
-                await page.goto(url, { waitUntil: 'networkidle2' });
-                const content = await page.content();
-                for (const t of TYPES) {
-                    if (content.includes(t)) {
-                        console.log("🚨 حجز متاح!");
-                        console.log(`السفارة: ${embassy}`);
-                        console.log(`النوع: ${t}`);
-                        console.log(USER_DATA);
-                        console.log(`رابط الحجز المباشر: ${url}`);
-                        console.log("-".repeat(50));
-                    }
-                }
-            } catch (err) {
-                console.log(`⚠️ خطأ في الاتصال بالسفارة ${embassy}: ${err.message}`);
-            }
-        }
-        await new Promise(r => setTimeout(r, 1000));
-    }
-})();
+  socket.on("join-room", ({ roomId, token }) => {
+    const room = rooms[roomId];
+    if (!room || room.token !== token) return socket.emit("room-error", "الرابط غير صالح");
+    if (room.users.length >= 2) return socket.emit("room-error", "الغرفة ممتلئة");
+
+    room.users.push(socket.id);
+    socket.join(roomId);
+    socketToRoom[socket.id] = roomId;
+
+    const others = room.users.filter(id => id !== socket.id);
+    socket.emit("joined", { roomId, selfId: socket.id, others });
+    socket.to(roomId).emit("user-joined", socket.id);
+  });
+
+  socket.on("offer", ({ to, sdp }) => io.to(to).emit("offer", { from: socket.id, sdp }));
+  socket.on("answer", ({ to, sdp }) => io.to(to).emit("answer", { from: socket.id, sdp }));
+  socket.on("candidate", ({ to, candidate }) => io.to(to).emit("candidate", { from: socket.id, candidate }));
+  socket.on("chat", ({ roomId, text, name }) => socket.to(roomId).emit("chat", { from: socket.id, text, name }));
+
+  socket.on("disconnect", () => {
+    const roomId = socketToRoom[socket.id];
+    if (!roomId) return;
+    const room = rooms[roomId];
+    if (!room) return;
+
+    room.users = room.users.filter(u => u !== socket.id);
+    if (room.users.length === 0) delete rooms[roomId];
+    else socket.to(roomId).emit("user-left", socket.id);
+    delete socketToRoom[socket.id];
+  });
+});
+
+// إنشاء غرفة جديدة
+app.get("/create-room", (req, res) => {
+  const roomId = nanoid(6);
+  const token = nanoid(12);
+  rooms[roomId] = { roomId, token, users: [] };
+  res.json({ roomId, token, link: `https://YOUR-RENDER-SERVER/room/${roomId}?t=${token}` });
+});
+
+app.use("/room", express.static("public")); // اختياري للاختبار
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
