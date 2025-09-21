@@ -9,15 +9,16 @@
   <div class="container">
     <h2>إنشاء غرفة مكالمة مؤقتة</h2>
     <button id="createBtn">إنشاء غرفة جديدة</button>
-
-    <!-- الرابط مع زر النسخ -->
-    <div id="linkDiv" style="margin-top:20px;">
-      <span id="roomLink" style="font-size:22px; font-weight:bold; color:#fff;"></span>
-      <button id="copyBtn" style="margin-left:10px; padding:10px 15px; font-size:16px; cursor:pointer; border:none; border-radius:8px; background:#4caf50; color:#fff;">
-        نسخ
-      </button>
+    <div id="linkDiv">
+      <span id="roomLink"></span>
+      <button id="copyBtn">نسخ الرابط</button>
     </div>
   </div>
+
+  <!-- استخدام CDN لـ Socket.io -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
+          integrity="sha384-TgKcB3H8U8QuS6k7MmvJYUyA+UYk5P0vVxI+0u/2oI4i/YvJZ3E8PQgi8zvI3V9R"
+          crossorigin="anonymous"></script>
 
   <script src="script.js"></script>
 </body>
