@@ -7,19 +7,27 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static(path.join(__dirname, "/"))); // يخدم index.html, room.html, css, js
+// يخدم index.html, room.html, css, js
+app.use(express.static(path.join(__dirname, "/"))); 
 
 // -------------------- إدارة الغرف --------------------
 const rooms = {}; // تخزين الغرف مؤقتًا
+
+// ضع رابط سيرفرك هنا
+const SERVER_URL = process.env.SERVER_URL || "https://two0000-lxps.onrender.com";
 
 app.get("/create-room", (req, res) => {
   const roomId = Math.random().toString(36).substr(2, 9);
   const token = Math.random().toString(36).substr(2, 15);
   rooms[roomId] = { token };
+
+  // رابط مطلق
+  const fullLink = `${SERVER_URL}/room.html?roomId=${roomId}&t=${token}`;
+
   res.json({
     roomId,
     token,
-    link: `/room.html?roomId=${roomId}&t=${token}`
+    link: fullLink
   });
 });
 
