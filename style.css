@@ -1,3 +1,4 @@
+/* body ثابت بدون scroll */
 body {
   margin: 0;
   padding: 0;
@@ -5,7 +6,8 @@ body {
   background: #000;
   color: #fff;
   overflow: hidden; /* يمنع تحريك الصفحة */
-  position: relative; /* لتثبيت العناصر المطلقة داخل body */
+  position: relative;
+  touch-action: none; /* يمنع السحب على الهاتف */
 }
 
 /* index.html */
@@ -16,18 +18,42 @@ body {
   align-items: center;
   height: 100vh;
   text-align: center;
-  overflow: hidden; /* يمنع أي scroll إضافي */
+}
+
+.container h2 {
+  margin-bottom: 20px;
+}
+
+#createBtn {
+  padding: 15px 25px;
+  font-size: 16px;
+  background: #ff9800;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+#createBtn:hover { background: #e68900; }
+
+#linkDiv a {
+  display: inline-block;
+  margin-top: 15px;
+  background: #4caf50;
+  padding: 10px 15px;
+  border-radius: 8px;
+  color: #fff;
+  text-decoration: none;
 }
 
 /* room.html */
 #remoteVideo {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100vw;
   height: 100vh;
   object-fit: cover;
   background: #000;
-  position: absolute;
-  top: 0;
-  left: 0;
 }
 
 #localVideo {
@@ -40,6 +66,7 @@ body {
   border: 2px solid #fff;
   object-fit: cover;
   box-shadow: 0 0 15px rgba(0,0,0,0.6);
+  z-index: 5;
 }
 
 #endCall {
@@ -55,10 +82,26 @@ body {
   border-radius: 30px;
   cursor: pointer;
   box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-  z-index: 10; /* للتأكد أنه فوق الفيديو */
+  z-index: 10;
 }
 
 #endCall:hover { background: darkred; }
+
+#switchCamera {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  padding: 10px 20px;
+  font-size: 14px;
+  background: #ff9800;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  z-index: 10;
+}
+
+#switchCamera:hover { background: #e68900; }
 
 .chat-area {
   position: absolute;
@@ -69,7 +112,7 @@ body {
   display: flex;
   flex-direction: column;
   background: #1e1e1e;
-  overflow: hidden; /* يمنع تحريك الصفحة عند الكتابة */
+  overflow: hidden; /* يمنع تحريك الصفحة */
   z-index: 10;
 }
 
@@ -77,7 +120,7 @@ body {
   flex: 1;
   padding: 10px;
   overflow-y: auto; /* فقط داخل الصندوق */
-  -webkit-overflow-scrolling: touch; /* لتسهيل السحب على الهاتف */
+  -webkit-overflow-scrolling: touch; /* للسحب على الهاتف */
 }
 
 .messages div {
