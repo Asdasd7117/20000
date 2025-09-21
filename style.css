@@ -1,144 +1,206 @@
-/* body ثابت بدون scroll */
+/* -------------------- Body -------------------- */
 body {
   margin: 0;
   padding: 0;
-  font-family: Arial, sans-serif;
-  background: #000;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #0d0d0d;
   color: #fff;
   overflow: hidden;
   position: relative;
 }
 
-/* الفيديو البعيد يغطي الشاشة */
-#remoteContainer video {
+/* -------------------- الفيديو البعيد -------------------- */
+#remoteContainer {
   position: absolute;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  object-fit: cover;
   background: #000;
-  z-index: 1;
 }
 
-/* الفيديو المحلي صغير في الزاوية */
+#remoteContainer video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+/* -------------------- الفيديو المحلي -------------------- */
 #localVideo {
   position: absolute;
   bottom: 20px;
   right: 20px;
-  width: 140px;
-  height: 180px;
-  border-radius: 12px;
-  border: 2px solid #fff;
+  width: 160px;
+  height: 220px;
+  border-radius: 15px;
+  border: 3px solid #ff9800;
   object-fit: cover;
-  box-shadow: 0 0 20px rgba(0,0,0,0.7);
-  z-index: 5;
-}
-
-/* أزرار التحكم */
-#endCall, #switchCamera {
-  position: absolute;
-  top: 20px;
-  padding: 15px 30px;
-  font-size: 18px;
-  border: none;
-  border-radius: 30px;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  box-shadow: 0 0 25px rgba(255, 152, 0, 0.7);
   z-index: 10;
 }
 
-#endCall {
-  left: 50%;
-  transform: translateX(-50%);
-  background: red;
-  color: #fff;
+/* -------------------- أزرار التحكم -------------------- */
+button {
+  font-family: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s ease;
+  border: none;
+  outline: none;
 }
 
-#endCall:hover { background: darkred; }
+#endCall {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 15px 35px;
+  font-size: 18px;
+  background: #e53935;
+  color: #fff;
+  border-radius: 50px;
+  box-shadow: 0 5px 15px rgba(229, 57, 53, 0.5);
+  z-index: 10;
+}
+
+#endCall:hover { background: #b71c1c; }
 
 #switchCamera {
+  position: absolute;
+  top: 20px;
   right: 20px;
+  padding: 12px 25px;
+  font-size: 16px;
   background: #ff9800;
   color: #fff;
+  border-radius: 25px;
+  box-shadow: 0 5px 15px rgba(255, 152, 0, 0.5);
+  z-index: 10;
 }
 
 #switchCamera:hover { background: #e68900; }
 
-/* صندوق الدردشة */
+/* -------------------- الدردشة -------------------- */
 .chat-area {
   position: absolute;
   right: 0;
   top: 0;
-  width: 280px;
+  width: 300px;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: rgba(30,30,30,0.9);
+  background: rgba(30, 30, 30, 0.85);
+  padding: 10px;
+  backdrop-filter: blur(8px);
   z-index: 10;
 }
 
 .messages {
   flex: 1;
-  padding: 15px;
+  padding: 10px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .messages div {
-  background: #333;
-  padding: 10px 15px;
+  background: #1f1f1f;
+  padding: 10px 14px;
   border-radius: 12px;
   margin-bottom: 10px;
   font-size: 16px;
+  color: #fff;
+  word-break: break-word;
 }
 
 .input-area {
   display: flex;
-  padding: 12px;
-  background: #252525;
+  margin-top: 5px;
 }
 
 .input-area input {
   flex: 1;
-  padding: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
   border: none;
-  border-radius: 10px;
-  margin-left: 5px;
   font-size: 16px;
+  margin-left: 5px;
+  background: #2a2a2a;
+  color: #fff;
+}
+
+.input-area input::placeholder {
+  color: #bbb;
 }
 
 .input-area button {
   padding: 10px 15px;
-  border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #4caf50;
   color: #fff;
-  cursor: pointer;
   font-size: 16px;
 }
 
-.input-area button:hover { background: #388e3c; }
+.input-area button:hover {
+  background: #388e3c;
+}
 
-/* رابط الغرفة وزر النسخ */
+/* -------------------- رابط الغرفة -------------------- */
 #roomLink {
-  margin-top: 20px;
-  font-size: 18px;
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2196f3;
+  padding: 12px 25px;
+  border-radius: 25px;
   color: #fff;
-  word-break: break-all;
+  font-weight: bold;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(33, 150, 243, 0.5);
+  z-index: 10;
+}
+
+#roomLink:hover { background: #1976d2; }
+
+#copyBtn {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ff9800;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  z-index: 10;
+}
+
+#copyBtn:hover { background: #e68900; }
+
+/* -------------------- أزرار وواجهة index.html -------------------- */
+.container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
   text-align: center;
 }
 
-#copyBtn {
-  display: inline-block;
-  margin-top: 10px;
-  padding: 12px 25px;
-  font-size: 16px;
-  background: #2196f3;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
+.container h2 {
+  font-size: 32px;
+  margin-bottom: 25px;
 }
 
-#copyBtn:hover { background: #1976d2; }
+#createBtn {
+  padding: 20px 50px;
+  font-size: 22px;
+  background: #ff9800;
+  border-radius: 15px;
+  color: #fff;
+}
+
+#createBtn:hover { background: #e68900; }
