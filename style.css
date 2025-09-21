@@ -5,9 +5,9 @@ body {
   font-family: Arial, sans-serif;
   background: #000;
   color: #fff;
-  overflow: hidden; /* يمنع تحريك الصفحة */
+  overflow: hidden;
   position: relative;
-  touch-action: none; /* يمنع السحب على الهاتف */
+  touch-action: none;
 }
 
 /* index.html */
@@ -21,15 +21,16 @@ body {
 }
 
 .container h2 {
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+  font-size: 28px; /* تكبير الكتابة */
 }
 
 #createBtn {
-  padding: 15px 25px;
-  font-size: 16px;
+  padding: 20px 40px; /* جعل الزر أكبر */
+  font-size: 20px;   /* تكبير الكتابة داخل الزر */
   background: #ff9800;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
 }
 
@@ -37,12 +38,13 @@ body {
 
 #linkDiv a {
   display: inline-block;
-  margin-top: 15px;
+  margin-top: 20px;
   background: #4caf50;
-  padding: 10px 15px;
-  border-radius: 8px;
+  padding: 15px 20px;
+  border-radius: 10px;
   color: #fff;
   text-decoration: none;
+  font-size: 18px; /* تكبير رابط الغرفة */
 }
 
 /* room.html */
@@ -58,30 +60,30 @@ body {
 
 #localVideo {
   position: absolute;
-  bottom: 15px;
-  right: 15px;
-  width: 120px;
-  height: 160px;
-  border-radius: 10px;
+  bottom: 20px;
+  right: 20px;
+  width: 160px;   /* تكبير الفيديو المحلي */
+  height: 200px;
+  border-radius: 12px;
   border: 2px solid #fff;
   object-fit: cover;
-  box-shadow: 0 0 15px rgba(0,0,0,0.6);
+  box-shadow: 0 0 20px rgba(0,0,0,0.7);
   z-index: 5;
 }
 
 #endCall {
   position: absolute;
-  top: 15px;
+  top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 12px 25px;
-  font-size: 16px;
+  padding: 15px 30px;
+  font-size: 18px; /* تكبير الزر */
   background: red;
   color: #fff;
   border: none;
-  border-radius: 30px;
+  border-radius: 35px;
   cursor: pointer;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 5px 10px rgba(0,0,0,0.4);
   z-index: 10;
 }
 
@@ -89,14 +91,14 @@ body {
 
 #switchCamera {
   position: absolute;
-  top: 15px;
-  right: 15px;
-  padding: 10px 20px;
-  font-size: 14px;
+  top: 20px;
+  right: 20px;
+  padding: 12px 25px;
+  font-size: 16px; /* تكبير الزر */
   background: #ff9800;
   color: #fff;
   border: none;
-  border-radius: 20px;
+  border-radius: 25px;
   cursor: pointer;
   z-index: 10;
 }
@@ -107,50 +109,53 @@ body {
   position: absolute;
   right: 0;
   top: 0;
-  width: 250px;
+  width: 280px; /* توسيع الصندوق */
   height: 100vh;
   display: flex;
   flex-direction: column;
   background: #1e1e1e;
-  overflow: hidden; /* يمنع تحريك الصفحة */
+  overflow: hidden;
   z-index: 10;
 }
 
 .messages {
   flex: 1;
-  padding: 10px;
-  overflow-y: auto; /* فقط داخل الصندوق */
-  -webkit-overflow-scrolling: touch; /* للسحب على الهاتف */
+  padding: 15px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .messages div {
   background: #333;
-  padding: 8px 12px;
-  border-radius: 10px;
-  margin-bottom: 8px;
+  padding: 10px 15px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  font-size: 16px; /* تكبير الكتابة */
 }
 
 .input-area {
   display: flex;
-  padding: 10px;
+  padding: 12px;
   background: #252525;
 }
 
 .input-area input {
   flex: 1;
-  padding: 8px;
+  padding: 10px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   margin-left: 5px;
+  font-size: 16px; /* تكبير الكتابة */
 }
 
 .input-area button {
-  padding: 8px 12px;
+  padding: 10px 15px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #4caf50;
   color: #fff;
   cursor: pointer;
+  font-size: 16px; /* تكبير الكتابة */
 }
 
 .input-area button:hover { background: #388e3c; }
