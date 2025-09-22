@@ -5,12 +5,13 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
+// ملفات ثابتة (HTML/CSS/JS)
 app.use(express.static('public'));
 
-// أي زائر يحصل على غرفة جديدة تلقائيًا
+// أي زائر يدخل / يحصل على UUID جديد
 app.get('/', (req, res) => {
-  const roomId = uuidv4(); 
-  res.redirect(`/room/${roomId}`);
+  const roomId = uuidv4(); // توليد UUID جديد
+  res.redirect(`/room/${roomId}`); // إعادة توجيه صحيحة
 });
 
 // صفحة الغرفة
@@ -18,12 +19,15 @@ app.get('/room/:roomId', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// تخزين الغرف
 const rooms = {};
 
 io.on('connection', (socket) => {
   socket.on('join-room', (roomId) => {
     if (!rooms[roomId]) rooms[roomId] = [];
     rooms[roomId].push(socket.id);
+
+    socket.join(roomId);
 
     socket.to(roomId).emit('user-connected', socket.id);
 
@@ -43,4 +47,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+http.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
