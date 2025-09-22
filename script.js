@@ -1,4 +1,4 @@
-const SERVER_URL = window.location.origin;
+const SERVER_URL = window.location.origin; // استخدم نفس السيرفر
 const socket = io(SERVER_URL);
 
 // عناصر HTML
@@ -18,7 +18,6 @@ let currentCamera = "user";
 let pcs = {};
 const ICE_CONFIG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 let roomId, token, selfId;
-let approved = false;
 
 // ------------------- إنشاء الغرفة -------------------
 if (createBtn) {
@@ -29,7 +28,7 @@ if (createBtn) {
       roomId = data.roomId;
       token = data.token;
 
-      const fullLink = window.location.origin + data.link;
+      const fullLink = window.location.origin + data.link; // الرابط الكامل
       roomLink.textContent = fullLink;
       copyBtn.onclick = () => {
         navigator.clipboard.writeText(fullLink)
@@ -66,6 +65,14 @@ if (switchCamBtn) {
   };
 }
 
+// ------------------- الانضمام للغرفة -------------------
+async function joinRoom(rid, tok) {
+  await startLocal();
+  roomId = rid;
+  token = tok;
+  socket.emit("join-room", { roomId, token });
+}
+
 // ------------------- إنشاء PeerConnection -------------------
 function createPC(remoteId) {
   if (pcs[remoteId]) return pcs[remoteId];
@@ -96,38 +103,8 @@ function createPC(remoteId) {
   return pc;
 }
 
-// ------------------- الانضمام للغرفة -------------------
-async function joinRoom(rid, tok) {
-  roomId = rid;
-  token = tok;
-
-  // إرسال طلب انضمام للغرفة وانتظار موافقة صاحب الغرفة
-  socket.emit("request-join", { roomId, token });
-
-  // ننتظر إشعار الموافقة
-  socket.on("join-approved", async () => {
-    approved = true;
-    await startLocal();
-    socket.emit("joined-room", { roomId });
-  });
-
-  socket.on("join-denied", () => {
-    alert("تم رفض الانضمام من قبل صاحب الغرفة.");
-  });
-}
-
 // ------------------- WebSocket -------------------
-socket.on("request-join", data => {
-  // صاحب الغرفة يتلقى طلب انضمام
-  const allow = confirm("هناك شخص يريد الانضمام إلى الغرفة، هل توافق؟");
-  if (allow) {
-    socket.emit("join-approved", { to: data.from });
-  } else {
-    socket.emit("join-denied", { to: data.from });
-  }
-});
-
-socket.on("joined-room", async ({ selfId: id, others }) => {
+socket.on("joined", async ({ selfId: id, others }) => {
   selfId = id;
   for (let otherId of others) {
     const pc = createPC(otherId);
@@ -140,6 +117,13 @@ socket.on("joined-room", async ({ selfId: id, others }) => {
 socket.on("user-joined", async otherId => createPC(otherId));
 
 socket.on("offer", async ({ from, sdp }) => {
+  // طلب الموافقة للطرف الثاني
+  const accept = confirm("صاحب الغرفة يريد الاتصال بك. هل توافق على الانضمام؟");
+  if (!accept) {
+    alert("رفضت الانضمام للغرفة.");
+    return;
+  }
+
   const pc = createPC(from);
   await pc.setRemoteDescription(new RTCSessionDescription(sdp));
   const answer = await pc.createAnswer();
@@ -202,5 +186,8 @@ const params = new URLSearchParams(window.location.search);
 if (params.has("roomId") && params.has("t")) {
   const rid = params.get("roomId");
   const tok = params.get("t");
-  joinRoom(rid, tok);
+  // الطرف الثاني يوافق على الانضمام
+  const accept = confirm("صاحب الغرفة يريد الاتصال بك. هل توافق على الانضمام؟");
+  if (accept) joinRoom(rid, tok);
+  else { alert("رفضت الانضمام للغرفة."); window.location.href = "/"; }
 }
