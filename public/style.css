@@ -1,37 +1,105 @@
+/* عام */
 body {
   font-family: Arial, sans-serif;
   background: #121212;
   color: #fff;
-  text-align: center;
   margin: 0;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
+/* عنوان التطبيق */
+h1 {
+  text-align: center;
+  margin: 10px 0;
+  font-size: 28px;
+  color: #00bfa5;
+}
+
+/* رابط الغرفة */
+#roomInfo {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+#roomInfo input {
+  width: 60%;
+  padding: 5px;
+  border-radius: 5px;
+  border: none;
+  font-size: 14px;
+}
+
+#roomInfo button {
+  padding: 5px 10px;
+  margin-left: 5px;
+  border: none;
+  border-radius: 5px;
+  background-color: #00bfa5;
+  color: #fff;
+  cursor: pointer;
+}
+
+#roomInfo button:hover {
+  background-color: #008e76;
+}
+
+/* شبكة الفيديو */
 #videos {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 10px;
+  flex: 1;
   padding: 10px;
+  overflow-y: auto;
 }
 
 video {
-  width: 300px;
-  height: 200px;
+  width: 100%;
+  height: auto;
   background: #000;
   border-radius: 8px;
   object-fit: cover;
+  box-shadow: 0 0 5px #00bfa5;
 }
 
+/* الدردشة والتحكم */
 #controls {
-  margin: 10px;
+  display: flex;
+  justify-content: center;
+  padding: 10px;
+  gap: 5px;
 }
 
+#controls input {
+  width: 50%;
+  padding: 8px;
+  border-radius: 5px;
+  border: none;
+  font-size: 14px;
+}
+
+#controls button {
+  padding: 8px 12px;
+  border-radius: 5px;
+  border: none;
+  background-color: #00bfa5;
+  color: #fff;
+  cursor: pointer;
+}
+
+#controls button:hover {
+  background-color: #008e76;
+}
+
+/* صندوق الدردشة */
 #chatBox {
-  max-height: 200px;
+  max-height: 180px;
   overflow-y: auto;
   background: #1e1e1e;
-  margin: 10px auto;
+  margin: 5px auto;
   width: 90%;
   padding: 10px;
   border-radius: 8px;
@@ -40,4 +108,23 @@ video {
 
 #chatBox p {
   margin: 5px 0;
+  font-size: 14px;
+}
+
+#chatBox b {
+  color: #00bfa5;
+}
+
+/* تمرير سلس */
+#chatBox::-webkit-scrollbar {
+  width: 6px;
+}
+
+#chatBox::-webkit-scrollbar-thumb {
+  background-color: #00bfa5;
+  border-radius: 3px;
+}
+
+#chatBox::-webkit-scrollbar-track {
+  background: #1e1e1e;
 }
