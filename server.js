@@ -6,6 +6,17 @@ const io = require('socket.io')(http);
 
 app.use(express.static('public'));
 
+// صفحة البداية - إنشاء رابط غرفة جديد
+app.get('/', (req, res) => {
+  const roomId = uuidv4();
+  res.redirect(`/room/${roomId}`);
+});
+
+// صفحة الغرفة
+app.get('/room/:roomId', (req, res) => {
+  res.sendFile(__dirname + '/public/index.html');
+});
+
 const rooms = {};
 
 io.on('connection', (socket) => {
