@@ -2,15 +2,20 @@ const socket = io();
 const videoGrid = document.getElementById("videos");
 const peers = {};
 
-// استخدام معرف الغرفة من الرابط
-let pathParts = window.location.pathname.split("/");
-let roomId = pathParts[2];
-
-if (!roomId) {
-  // إنشاء غرفة جديدة فقط إذا الرابط لا يحتوي معرف
-  roomId = crypto.randomUUID();
-  window.history.replaceState(null, "Room", `/room/${roomId}`);
+// التقاط معرف الغرفة من الرابط بطريقة آمنة
+function getRoomId() {
+  const match = window.location.pathname.match(/\/room\/([a-zA-Z0-9-]+)/);
+  if (match && match[1]) {
+    return match[1];
+  } else {
+    const newId = crypto.randomUUID();
+    window.history.replaceState(null, "Room", `/room/${newId}`);
+    return newId;
+  }
 }
+
+const roomId = getRoomId();
+console.log("Room ID:", roomId); // تحقق في Console
 
 // عرض رابط الغرفة للنسخ
 document.getElementById("roomLink").value = window.location.href;
@@ -22,12 +27,10 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
 
     socket.emit("join-room", roomId);
 
-    // عندما ينضم مستخدم جديد
     socket.on("user-connected", userId => {
       connectToNewUser(userId, stream);
     });
 
-    // استقبال الإشارات من الآخرين
     socket.on("signal", async data => {
       let peer = peers[data.userId];
       if (!peer) {
@@ -47,7 +50,6 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       }
     });
 
-    // عند خروج مستخدم
     socket.on("user-disconnected", userId => {
       if (peers[userId]) {
         peers[userId].close();
@@ -57,30 +59,24 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   })
   .catch(err => console.error("خطأ في الوصول للكاميرا أو الميكروفون:", err));
 
-// إنشاء Peer جديد
 function connectToNewUser(userId, stream) {
   const peer = createPeer(userId, stream, true);
   peers[userId] = peer;
 }
 
-// دالة إنشاء Peer
 function createPeer(userId, stream, initiator) {
   const peer = new RTCPeerConnection();
 
-  // إضافة المسارات
   stream.getTracks().forEach(track => peer.addTrack(track, stream));
 
-  // استقبال فيديو من الآخرين
   peer.ontrack = e => addVideoStream(e.streams[0], `👤 ${userId}`);
 
-  // إرسال ICE candidates
   peer.onicecandidate = e => {
     if (e.candidate) {
       socket.emit("signal", { roomId, signal: e.candidate });
     }
   };
 
-  // إذا initiator، إنشاء عرض
   if (initiator) {
     peer.createOffer().then(offer => peer.setLocalDescription(offer))
         .then(() => socket.emit("signal", { roomId, signal: peer.localDescription }));
@@ -89,7 +85,6 @@ function createPeer(userId, stream, initiator) {
   return peer;
 }
 
-// إضافة الفيديو للشاشة
 function addVideoStream(stream, label) {
   const video = document.createElement("video");
   video.srcObject = stream;
@@ -106,7 +101,6 @@ function addVideoStream(stream, label) {
   videoGrid.appendChild(container);
 }
 
-// نسخ رابط الغرفة
 function copyLink() {
   navigator.clipboard.writeText(window.location.href);
   alert("تم نسخ الرابط ✅");
