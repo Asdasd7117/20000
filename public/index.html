@@ -9,17 +9,14 @@
 <body>
 <h1>VideoConnect</h1>
 
-<!-- رابط الغرفة -->
 <div id="roomInfo">
   <p>رابط غرفتك:</p>
   <input type="text" id="roomLink" readonly>
   <button onclick="copyLink()">نسخ الرابط</button>
 </div>
 
-<!-- شبكة الفيديوهات -->
 <div id="videos"></div>
 
-<!-- أدوات الدردشة -->
 <div id="controls">
   <input type="text" id="chatInput" placeholder="اكتب رسالة...">
   <button id="sendChat">إرسال</button>
@@ -27,13 +24,12 @@
 
 <div id="chatBox"></div>
 
-<!-- مكتبات -->
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 
-<!-- تمرير roomId من السيرفر -->
 <script>
-  const roomId = "{{ROOM_ID}}"; // هذا سيتم تغييره من السيرفر عند الإرسال
+  // استخراج roomId من الرابط مباشرة
+  const roomId = window.location.pathname.split('/')[2];
   document.getElementById('roomLink').value = window.location.origin + '/room/' + roomId;
 
   function copyLink() {
