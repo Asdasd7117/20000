@@ -9,10 +9,15 @@
 <body>
 <h1>VideoConnect</h1>
 
+<div id="roomInfo">
+  <p>رابط غرفتك:</p>
+  <input type="text" id="roomLink" value="" readonly>
+  <button onclick="copyLink()">نسخ الرابط</button>
+</div>
+
 <div id="videos"></div>
 
 <div id="controls">
-  <button id="shareScreen">مشاركة الشاشة</button>
   <input type="text" id="chatInput" placeholder="اكتب رسالة...">
   <button id="sendChat">إرسال</button>
 </div>
@@ -22,5 +27,11 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 <script src="script.js"></script>
+<script>
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href);
+  alert('تم نسخ الرابط!');
+}
+</script>
 </body>
 </html>
