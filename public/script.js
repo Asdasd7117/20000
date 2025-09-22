@@ -1,105 +1,123 @@
 const socket = io();
-const videos = document.getElementById('videos');
-const myVideo = document.createElement('video');
-myVideo.muted = true;
-let myStream;
+
+// استخراج roomId من الرابط
+const pathParts = window.location.pathname.split('/');
+const roomId = pathParts[pathParts.length - 1];
+
+// إعداد WebRTC
 const peers = {};
+const localVideo = document.createElement('video');
+localVideo.muted = true;
+document.getElementById('videos').appendChild(localVideo);
 
-// الحصول على معرف الغرفة من الرابط
-let roomId = window.location.pathname.split('/')[2];
-
-// الانضمام للغرفة والحصول على الفيديو والصوت
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
-    myStream = stream;
-    myVideo.srcObject = stream;
-    myVideo.play();
-    videos.appendChild(myVideo);
+    localVideo.srcObject = stream;
+    localVideo.play();
 
+    // الانضمام للغرفة بعد الحصول على الكاميرا
     socket.emit('join-room', roomId);
 
-    // عرض رابط الغرفة
-    document.getElementById('roomLink').value = window.location.href;
-
-    // عند انضمام مستخدم جديد
     socket.on('user-connected', userId => {
-      connectToNewUser(userId, stream);
+      createPeerConnection(userId, stream, true);
     });
 
-    // استقبال الإشارات (signals) من مستخدمين آخرين
-    socket.on('signal', async data => {
-      if (!peers[data.from]) return;
+    socket.on('signal', async (data) => {
+      if (data.from === socket.id) return;
+
+      if (!peers[data.from]) {
+        createPeerConnection(data.from, stream, false);
+      }
+
+      const pc = peers[data.from];
 
       if (data.sdp) {
-        await peers[data.from].setRemoteDescription(new RTCSessionDescription(data.sdp));
+        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
         if (data.sdp.type === 'offer') {
-          const answer = await peers[data.from].createAnswer();
-          await peers[data.from].setLocalDescription(answer);
-          socket.emit('signal', { to: data.from, sdp: peers[data.from].localDescription });
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          socket.emit('signal', { to: data.from, sdp: pc.localDescription });
         }
-      } else if (data.candidate) {
-        await peers[data.from].addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+
+      if (data.candidate) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+        } catch (e) {
+          console.error('خطأ في ICE:', e);
+        }
       }
     });
 
-    // عند انقطاع مستخدم
     socket.on('user-disconnected', userId => {
       if (peers[userId]) {
         peers[userId].close();
         delete peers[userId];
+        const video = document.getElementById(userId);
+        if (video) video.remove();
       }
     });
-
-    // الدردشة
-    const chatInput = document.getElementById('chatInput');
-    const sendChat = document.getElementById('sendChat');
-    const chatBox = document.getElementById('chatBox');
-
-    sendChat.onclick = () => {
-      if (chatInput.value.trim() === "") return;
-      const msg = chatInput.value;
-      socket.emit('chat-message', msg);
-      chatBox.innerHTML += `<p><b>أنا:</b> ${msg}</p>`;
-      chatInput.value = "";
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    socket.on('chat-message', data => {
-      chatBox.innerHTML += `<p><b>${data.user}:</b> ${data.msg}</p>`;
-      chatBox.scrollTop = chatBox.scrollHeight;
-    });
-
   })
-  .catch(err => console.error("خطأ في الوصول للكاميرا أو الميكروفون:", err));
+  .catch(err => {
+    alert('لا يمكن الوصول إلى الكاميرا/الميكروفون: ' + err.message);
+  });
 
-// دالة الاتصال بمستخدم جديد
-function connectToNewUser(userId, stream) {
-  const peer = new RTCPeerConnection();
-  peers[userId] = peer;
+// إنشاء اتصال WebRTC
+function createPeerConnection(userId, stream, initiator) {
+  const pc = new RTCPeerConnection({
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  });
 
-  // إضافة مسارات الفيديو والصوت
-  stream.getTracks().forEach(track => peer.addTrack(track, stream));
+  // إرسال تدفقات الفيديو
+  stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-  // عند وجود ICE candidates
-  peer.onicecandidate = e => {
-    if (e.candidate) {
-      socket.emit('signal', { to: userId, candidate: e.candidate });
+  // استقبال الفيديو من الطرف الآخر
+  pc.ontrack = event => {
+    const remoteVideo = document.createElement('video');
+    remoteVideo.id = userId;
+    remoteVideo.srcObject = event.streams[0];
+    remoteVideo.autoplay = true;
+    document.getElementById('videos').appendChild(remoteVideo);
+  };
+
+  // تبادل مرشحي ICE
+  pc.onicecandidate = event => {
+    if (event.candidate) {
+      socket.emit('signal', { to: userId, candidate: event.candidate });
     }
   };
 
-  // استقبال مسار فيديو المستخدم الجديد
-  peer.ontrack = e => {
-    const video = document.createElement('video');
-    video.srcObject = e.streams[0];
-    video.autoplay = true;
-    video.playsInline = true;
-    videos.appendChild(video);
-  };
+  peers[userId] = pc;
 
-  // إنشاء عرض (offer) وارساله للمستخدم الجديد
-  peer.createOffer()
-    .then(offer => peer.setLocalDescription(offer))
-    .then(() => {
-      socket.emit('signal', { to: userId, sdp: peer.localDescription });
-    });
+  if (initiator) {
+    pc.onnegotiationneeded = async () => {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('signal', { to: userId, sdp: pc.localDescription });
+    };
+  }
+}
+
+// 📝 الدردشة النصية
+const chatInput = document.getElementById('chatInput');
+const sendChatBtn = document.getElementById('sendChat');
+const chatBox = document.getElementById('chatBox');
+
+sendChatBtn.addEventListener('click', () => {
+  const msg = chatInput.value;
+  if (msg.trim() !== '') {
+    appendMessage('أنا', msg);
+    socket.emit('chat-message', msg);
+    chatInput.value = '';
+  }
+});
+
+socket.on('chat-message', data => {
+  appendMessage(data.user, data.msg);
+});
+
+function appendMessage(user, msg) {
+  const p = document.createElement('p');
+  p.textContent = user + ': ' + msg;
+  chatBox.appendChild(p);
 }
