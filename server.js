@@ -1,5 +1,8 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
+const path = require('path');
+
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
@@ -14,7 +17,13 @@ app.get('/', (req, res) => {
 
 // صفحة الغرفة
 app.get('/room/:roomId', (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');
+  const filePath = path.join(__dirname, 'public', 'index.html');
+  let html = fs.readFileSync(filePath, 'utf8');
+  
+  // استبدال {{ROOM_ID}} بالمعرف الفعلي للغرفة
+  html = html.replace('{{ROOM_ID}}', req.params.roomId);
+  
+  res.send(html);
 });
 
 const rooms = {};
