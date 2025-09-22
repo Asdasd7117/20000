@@ -24,8 +24,9 @@ io.on("connection", (socket) => {
     socket.join(roomId);
     socket.to(roomId).emit("user-connected", socket.id);
 
+    // استقبال الإشارات وإرسالها لكل شخص آخر في الغرفة
     socket.on("signal", (data) => {
-      io.to(data.userId).emit("signal", { userId: socket.id, signal: data.signal });
+      socket.to(roomId).emit("signal", { userId: socket.id, signal: data.signal });
     });
 
     socket.on("disconnect", () => {
