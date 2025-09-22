@@ -1,6 +1,7 @@
-const SERVER_URL = window.location.origin; // يتوافق مع Render
+const SERVER_URL = window.location.origin; // استخدم نفس السيرفر
 const socket = io(SERVER_URL);
 
+// عناصر HTML
 const createBtn = document.getElementById("createBtn");
 const roomLink = document.getElementById("roomLink");
 const copyBtn = document.getElementById("copyBtn");
@@ -13,11 +14,10 @@ const endCallBtn = document.getElementById("endCall");
 const switchCamBtn = document.getElementById("switchCamera");
 
 let localStream;
-let pcs = {};
 let currentCamera = "user";
-let roomId, token, selfId;
-
+let pcs = {};
 const ICE_CONFIG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+let roomId, token, selfId;
 
 // ------------------- إنشاء الغرفة -------------------
 if (createBtn) {
@@ -28,30 +28,30 @@ if (createBtn) {
       roomId = data.roomId;
       token = data.token;
 
-      roomLink.textContent = `${window.location.origin}${data.link}`;
+      const fullLink = window.location.origin + data.link; // الرابط الكامل
+      roomLink.textContent = fullLink;
       copyBtn.onclick = () => {
-        navigator.clipboard.writeText(`${window.location.origin}${data.link}`)
+        navigator.clipboard.writeText(fullLink)
           .then(() => alert("تم نسخ الرابط!"))
           .catch(() => alert("حدث خطأ أثناء النسخ"));
       };
 
       alert("انسخ الرابط وشاركه مع صديقك!");
     } catch (err) {
-      console.error(err);
       alert("حدث خطأ أثناء إنشاء الغرفة");
+      console.error(err);
     }
   };
 }
 
-// ------------------- الكاميرا المحلية -------------------
+// ------------------- بدء الكاميرا -------------------
 async function startLocal() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentCamera }, audio: true });
-    localVideo.srcObject = localStream;
-    await localVideo.play();
+    if (localVideo) localVideo.srcObject = localStream;
   } catch (err) {
-    console.error("فشل الوصول للكاميرا والميكروفون:", err);
-    alert("الرجاء السماح بالوصول للكاميرا والميكروفون");
+    console.error("فشل الوصول للكاميرا/الميكروفون:", err);
+    alert("يرجى التأكد من السماح بالوصول إلى الكاميرا والميكروفون!");
   }
 }
 
@@ -67,9 +67,9 @@ if (switchCamBtn) {
 
 // ------------------- الانضمام للغرفة -------------------
 async function joinRoom(rid, tok) {
+  await startLocal();
   roomId = rid;
   token = tok;
-  await startLocal();
   socket.emit("join-room", { roomId, token });
 }
 
@@ -88,7 +88,9 @@ function createPC(remoteId) {
       vid.id = "remote_" + remoteId;
       vid.autoplay = true;
       vid.playsInline = true;
-      vid.controls = false;
+      vid.style.width = "100%";
+      vid.style.height = "100%";
+      vid.style.objectFit = "cover";
       remoteContainer.appendChild(vid);
     }
     vid.srcObject = e.streams[0];
@@ -124,15 +126,18 @@ socket.on("offer", async ({ from, sdp }) => {
 
 socket.on("answer", async ({ from, sdp }) => {
   const pc = pcs[from];
-  if (pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+  if (!pc) return;
+  await pc.setRemoteDescription(new RTCSessionDescription(sdp));
 });
 
 socket.on("candidate", ({ from, candidate }) => {
   const pc = pcs[from];
-  if (pc) pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.error);
+  if (!pc) return;
+  pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.error);
 });
 
 socket.on("room-error", msg => alert(msg));
+
 socket.on("user-left", id => {
   const vid = document.getElementById("remote_" + id);
   if (vid) vid.remove();
@@ -150,7 +155,7 @@ if (sendBtn) {
   };
 }
 
-socket.on("chat", ({ text, name }) => addMessage(`${name || "طرف آخر"}: ${text}`));
+socket.on("chat", ({ from, text, name }) => addMessage(`${name || from}: ${text}`));
 
 function addMessage(msg) {
   const div = document.createElement("div");
@@ -169,8 +174,10 @@ if (endCallBtn) {
   };
 }
 
-// ------------------- تحقق من الرابط عند فتح room.html -------------------
+// ------------------- التحقق من الرابط عند فتح room.html -------------------
 const params = new URLSearchParams(window.location.search);
 if (params.has("roomId") && params.has("t")) {
-  joinRoom(params.get("roomId"), params.get("t"));
+  const rid = params.get("roomId");
+  const tok = params.get("t");
+  joinRoom(rid, tok);
 }
