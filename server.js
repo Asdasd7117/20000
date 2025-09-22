@@ -6,9 +6,9 @@ const io = require('socket.io')(http);
 
 app.use(express.static('public'));
 
-// أي زائر يحصل على غرفة جديدة تلقائيًا
+// أي زائر يحصل على غرفة خاصة تلقائيًا
 app.get('/', (req, res) => {
-  const roomId = uuidv4(); // UUID جديد لكل زيارة
+  const roomId = uuidv4();
   res.redirect(`/room/${roomId}`);
 });
 
