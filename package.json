@@ -1,12 +1,14 @@
 {
-  "name": "video-meet-app",
+  "name": "video-connect",
   "version": "1.0.0",
+  "description": "Advanced Video Conferencing like Google Meet",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.7.2"
+    "socket.io": "^4.7.2",
+    "uuid": "^9.0.0"
   }
 }
