@@ -1,7 +1,7 @@
 {
   "name": "video-connect",
   "version": "1.0.0",
-  "description": "Advanced Video Conferencing like Google Meet",
+  "description": "Video conferencing app with private room for each visitor",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
