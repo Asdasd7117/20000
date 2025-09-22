@@ -1,37 +1,27 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VideoConnect</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Meet App</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>VideoConnect</h1>
+  <h1>🔗 رابط الغرفة</h1>
+  <div id="roomInfo">
+    <input type="text" id="roomLink" readonly>
+    <button onclick="copyLink()">نسخ الرابط</button>
+  </div>
 
-<div id="roomInfo">
-  <p>رابط غرفتك:</p>
-  <input type="text" id="roomLink" value="" readonly>
-  <button onclick="copyLink()">نسخ الرابط</button>
-</div>
+  <div id="videos"></div>
 
-<div id="videos"></div>
+  <div id="controls">
+    <input id="chatInput" placeholder="اكتب رسالة...">
+    <button onclick="sendMessage()">إرسال</button>
+  </div>
 
-<div id="controls">
-  <input type="text" id="chatInput" placeholder="اكتب رسالة...">
-  <button id="sendChat">إرسال</button>
-</div>
+  <div id="chatBox"></div>
 
-<div id="chatBox"></div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-<script src="script.js"></script>
-<script>
-function copyLink() {
-  navigator.clipboard.writeText(window.location.href);
-  alert('تم نسخ الرابط!');
-}
-</script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
