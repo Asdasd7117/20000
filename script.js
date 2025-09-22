@@ -6,7 +6,7 @@ const createBtn = document.getElementById("createBtn");
 const roomLink = document.getElementById("roomLink");
 const copyBtn = document.getElementById("copyBtn");
 const localVideo = document.getElementById("localVideo");
-const remoteContainer = document.getElementById("remoteContainer");
+const remoteVideo = document.getElementById("remoteVideo");
 const msgInput = document.getElementById("msgInput");
 const sendBtn = document.getElementById("sendBtn");
 const messagesDiv = document.getElementById("messages");
@@ -50,7 +50,7 @@ async function startLocal() {
     localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentCamera }, audio: true });
     if (localVideo) {
       localVideo.srcObject = localStream;
-      localVideo.play().catch(err => console.error("فشل التشغيل التلقائي:", err)); // التأكد من التشغيل
+      localVideo.play().catch(err => console.error("فشل التشغيل التلقائي:", err));
     }
   } catch (err) {
     console.error("فشل الوصول للكاميرا/الميكروفون:", err);
@@ -99,19 +99,10 @@ function createPC(remoteId) {
   }
 
   pc.ontrack = e => {
-    let vid = document.getElementById("remote_" + remoteId);
-    if (!vid) {
-      vid = document.createElement("video");
-      vid.id = "remote_" + remoteId;
-      vid.autoplay = true;
-      vid.playsInline = true;
-      vid.style.width = "100%";
-      vid.style.height = "100%";
-      vid.style.objectFit = "cover";
-      remoteContainer.appendChild(vid);
+    if (remoteVideo) {
+      remoteVideo.srcObject = e.streams[0];
+      remoteVideo.play().catch(err => console.error("فشل تشغيل الفيديو البعيد:", err));
     }
-    vid.srcObject = e.streams[0];
-    vid.play().catch(err => console.error("فشل تشغيل الفيديو البعيد:", err));
   };
 
   pc.onicecandidate = ev => {
@@ -165,8 +156,7 @@ socket.on("candidate", ({ from, candidate }) => {
 socket.on("room-error", msg => alert(msg));
 
 socket.on("user-left", id => {
-  const vid = document.getElementById("remote_" + id);
-  if (vid) vid.remove();
+  if (remoteVideo) remoteVideo.srcObject = null;
   delete pcs[id];
 });
 
@@ -197,8 +187,9 @@ if (endCallBtn) {
     pcs = {};
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
-      localVideo.srcObject = null; // إفراغ المصدر لتجنب التكرار
+      localVideo.srcObject = null;
     }
+    if (remoteVideo) remoteVideo.srcObject = null;
     window.location.href = "/";
   };
 }
