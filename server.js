@@ -1,21 +1,32 @@
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import path from "path";
 
 const app = express();
 const server = createServer(app);
 const io = new Server(server);
 
-app.use(express.static("public"));
+const __dirname = path.resolve();
 
-// الصفحة الرئيسية تعرض index.html مباشرة
+// ملفات ثابتة
+app.use(express.static(path.join(__dirname, "public")));
+
+// الصفحة الرئيسية
 app.get("/", (req, res) => {
-  res.sendFile(process.cwd() + "/public/index.html");
+  res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
 // صفحة الغرفة
 app.get("/room/:roomId", (req, res) => {
-  res.sendFile(process.cwd() + "/public/index.html");
+  res.sendFile(path.join(__dirname, "public/index.html"));
+});
+
+// إعادة توجيه أي رابط آخر إلى index.html (ماعدا Socket.IO)
+app.get("*", (req, res) => {
+  if (!req.path.startsWith("/socket.io")) {
+    res.sendFile(path.join(__dirname, "public/index.html"));
+  }
 });
 
 // إدارة الغرف والمستخدمين
