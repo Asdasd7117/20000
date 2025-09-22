@@ -1,25 +1,22 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VideoConnect</title>
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <h1>VideoConnect</h1>
 
-<!-- رابط الغرفة -->
 <div id="roomInfo">
   <p>رابط غرفتك:</p>
-  <input type="text" id="roomLink" readonly>
+  <input type="text" id="roomLink" value="" readonly>
   <button onclick="copyLink()">نسخ الرابط</button>
 </div>
 
-<!-- شبكة الفيديوهات -->
 <div id="videos"></div>
 
-<!-- أدوات الدردشة -->
 <div id="controls">
   <input type="text" id="chatInput" placeholder="اكتب رسالة...">
   <button id="sendChat">إرسال</button>
@@ -27,22 +24,14 @@
 
 <div id="chatBox"></div>
 
-<!-- مكتبات -->
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-
-<!-- تمرير roomId من السيرفر -->
+<script src="script.js"></script>
 <script>
-  const roomId = "{{ROOM_ID}}"; // هذا سيتم تغييره من السيرفر عند الإرسال
-  document.getElementById('roomLink').value = window.location.origin + '/room/' + roomId;
-
-  function copyLink() {
-    const link = window.location.origin + '/room/' + roomId;
-    navigator.clipboard.writeText(link);
-    alert('تم نسخ الرابط: ' + link);
-  }
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href);
+  alert('تم نسخ الرابط!');
+}
 </script>
-
-<script src="/script.js"></script>
 </body>
 </html>
