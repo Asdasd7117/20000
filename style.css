@@ -87,18 +87,19 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  width: 800px;   /* تعديل حسب طلبك */
-  height: 900px;  /* تعديل حسب طلبك */
+  width: calc(100vw - 400px); /* ملء الشاشة مع استثناء الدردشة */
+  height: 100vh;
   object-fit: cover;
   background: #000;
+  z-index: 1;
 }
 
 #localVideo {
   position: absolute;
   bottom: 20px;
-  right: 20px;
-  width: 150px;
-  height: 100px;
+  right: 420px; /* خارج الدردشة */
+  width: 200px;
+  height: 150px;
   border-radius: 10px;
   border: 2px solid #fff;
   object-fit: cover;
@@ -131,7 +132,7 @@ body {
 #switchCamera {
   position: absolute;
   top: 25px;
-  right: 25px;
+  right: 425px; /* خارج الدردشة */
   padding: 20px 40px;
   font-size: 22px;
   background: #ff9800;
@@ -154,7 +155,7 @@ body {
   position: absolute;
   right: 0;
   top: 0;
-  width: 400px;  /* تكبير صندوق الدردشة */
+  width: 400px;
   height: 100vh;
   display: flex;
   flex-direction: column;
