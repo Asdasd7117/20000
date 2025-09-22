@@ -1,97 +1,92 @@
 const socket = io();
-const videos = document.getElementById('videos');
-const myVideo = document.createElement('video');
-myVideo.muted = true;
-let myStream;
+
+// معرف الغرفة من الرابط
+let roomId = window.location.pathname.split("/")[2];
+
+// Peer Connections
 const peers = {};
+const videoGrid = document.getElementById("videos");
 
-// الحصول على معرف الغرفة من الرابط
-let roomId = window.location.pathname.split('/')[2];
+// إعداد الفيديو المحلي
+navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
+  addVideoStream(stream, "أنا");
 
-// الانضمام للغرفة
-navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-  .then(stream => {
-    myStream = stream;
-    myVideo.srcObject = stream;
-    myVideo.play();
-    videos.appendChild(myVideo);
+  socket.emit("join-room", roomId);
 
-    socket.emit('join-room', roomId);
+  socket.on("user-connected", (userId) => {
+    connectToNewUser(userId, stream);
+  });
+});
 
-    // عرض رابط الغرفة
-    document.getElementById('roomLink').value = window.location.href;
-
-    // التعامل مع مستخدمين جدد
-    socket.on('user-connected', userId => {
-      connectToNewUser(userId, stream);
-    });
-
-    socket.on('signal', async data => {
-      if (!peers[data.from]) return;
-      if (data.sdp) {
-        await peers[data.from].setRemoteDescription(new RTCSessionDescription(data.sdp));
-        if (data.sdp.type === 'offer') {
-          const answer = await peers[data.from].createAnswer();
-          await peers[data.from].setLocalDescription(answer);
-          socket.emit('signal', { to: data.from, sdp: peers[data.from].localDescription });
-        }
-      } else if (data.candidate) {
-        await peers[data.from].addIceCandidate(new RTCIceCandidate(data.candidate));
-      }
-    });
-
-    socket.on('user-disconnected', userId => {
-      if (peers[userId]) {
-        peers[userId].close();
-        delete peers[userId];
-      }
-    });
-
-    // الدردشة
-    const chatInput = document.getElementById('chatInput');
-    const sendChat = document.getElementById('sendChat');
-    const chatBox = document.getElementById('chatBox');
-
-    sendChat.onclick = () => {
-      if (chatInput.value.trim() === "") return;
-      const msg = chatInput.value;
-      socket.emit('chat-message', msg);
-      chatBox.innerHTML += `<p><b>أنا:</b> ${msg}</p>`;
-      chatInput.value = "";
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    socket.on('chat-message', data => {
-      chatBox.innerHTML += `<p><b>${data.user}:</b> ${data.msg}</p>`;
-      chatBox.scrollTop = chatBox.scrollHeight;
-    });
-
-  })
-  .catch(err => console.error("خطأ في الوصول للكاميرا أو الميكروفون:", err));
-
-// دالة إنشاء اتصال مع مستخدم جديد
+// التعامل مع WebRTC
 function connectToNewUser(userId, stream) {
   const peer = new RTCPeerConnection();
-  peers[userId] = peer;
+  stream.getTracks().forEach((track) => peer.addTrack(track, stream));
 
-  stream.getTracks().forEach(track => peer.addTrack(track, stream));
+  const video = document.createElement("video");
+  video.autoplay = true;
 
-  peer.onicecandidate = e => {
-    if (e.candidate) {
-      socket.emit('signal', { to: userId, candidate: e.candidate });
+  peer.ontrack = (event) => {
+    video.srcObject = event.streams[0];
+    addVideoStream(video.srcObject, `👤 ${userId}`);
+  };
+
+  peer.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit("signal", { userId, signal: event.candidate });
     }
   };
 
-  peer.ontrack = e => {
-    const video = document.createElement('video');
-    video.srcObject = e.streams[0];
-    video.autoplay = true;
-    video.playsInline = true;
-    videos.appendChild(video);
-  };
+  peers[userId] = peer;
+}
 
-  peer.createOffer().then(offer => peer.setLocalDescription(offer))
-    .then(() => {
-      socket.emit('signal', { to: userId, sdp: peer.localDescription });
-    });
+// استقبال الإشارات
+socket.on("signal", (data) => {
+  const peer = peers[data.userId];
+  if (peer) {
+    peer.addIceCandidate(new RTCIceCandidate(data.signal));
+  }
+});
+
+socket.on("user-disconnected", (userId) => {
+  if (peers[userId]) {
+    peers[userId].close();
+    delete peers[userId];
+  }
+});
+
+// إضافة الفيديو للشاشة
+function addVideoStream(stream, label) {
+  const video = document.createElement("video");
+  video.srcObject = stream;
+  video.autoplay = true;
+  video.playsInline = true;
+
+  const container = document.createElement("div");
+  container.appendChild(video);
+  container.appendChild(document.createElement("br"));
+  const nameTag = document.createElement("span");
+  nameTag.innerText = label;
+  container.appendChild(nameTag);
+
+  videoGrid.appendChild(container);
+}
+
+// رابط الغرفة
+document.getElementById("roomLink").value = window.location.href;
+
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href);
+  alert("تم نسخ الرابط ✅");
+}
+
+// دردشة نصية (بسيطة)
+function sendMessage() {
+  const input = document.getElementById("chatInput");
+  const msg = input.value;
+  if (msg.trim()) {
+    const chatBox = document.getElementById("chatBox");
+    chatBox.innerHTML += `<p><b>أنا:</b> ${msg}</p>`;
+    input.value = "";
+  }
 }
