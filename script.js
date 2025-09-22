@@ -117,15 +117,16 @@ socket.on("joined", async ({ selfId: id, others }) => {
 socket.on("user-joined", async otherId => createPC(otherId));
 
 socket.on("offer", async ({ from, sdp }) => {
-  // طلب الموافقة للطرف الثاني
-  const accept = confirm("صاحب الغرفة يريد الاتصال بك. هل توافق على الانضمام؟");
-  if (!accept) {
-    alert("رفضت الانضمام للغرفة.");
+  const pc = createPC(from);
+  await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+
+  // ✅ عرض رسالة موافقة قبل إرسال الـ answer
+  const agree = confirm("هل تريد قبول المكالمة من هذا الشخص؟");
+  if (!agree) {
+    alert("رفضت المكالمة.");
     return;
   }
 
-  const pc = createPC(from);
-  await pc.setRemoteDescription(new RTCSessionDescription(sdp));
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
   socket.emit("answer", { to: from, sdp: answer });
@@ -186,8 +187,12 @@ const params = new URLSearchParams(window.location.search);
 if (params.has("roomId") && params.has("t")) {
   const rid = params.get("roomId");
   const tok = params.get("t");
-  // الطرف الثاني يوافق على الانضمام
-  const accept = confirm("صاحب الغرفة يريد الاتصال بك. هل توافق على الانضمام؟");
-  if (accept) joinRoom(rid, tok);
-  else { alert("رفضت الانضمام للغرفة."); window.location.href = "/"; }
+
+  // ✅ عرض رسالة موافقة قبل الانضمام
+  const agree = confirm("هل تريد الانضمام إلى هذه الغرفة؟");
+  if (agree) {
+    joinRoom(rid, tok);
+  } else {
+    alert("رفضت الانضمام للغرفة.");
+  }
 }
