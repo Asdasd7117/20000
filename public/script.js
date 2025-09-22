@@ -2,14 +2,17 @@ const socket = io();
 const videoGrid = document.getElementById("videos");
 const peers = {};
 
-// إنشاء UUID لغرفة الزائر تلقائيًا إذا لم يكن الرابط يحتوي معرف
-let roomId = window.location.pathname.split("/")[2];
+// استخدام معرف الغرفة من الرابط
+let pathParts = window.location.pathname.split("/");
+let roomId = pathParts[2];
+
 if (!roomId) {
-  roomId = crypto.randomUUID(); // كل زائر له UUID مختلف
+  // إنشاء غرفة جديدة فقط إذا الرابط لا يحتوي معرف
+  roomId = crypto.randomUUID();
   window.history.replaceState(null, "Room", `/room/${roomId}`);
 }
 
-// عرض رابط الغرفة في الصفحة
+// عرض رابط الغرفة للنسخ
 document.getElementById("roomLink").value = window.location.href;
 
 // إعداد الفيديو المحلي
@@ -19,16 +22,32 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
 
     socket.emit("join-room", roomId);
 
+    // عندما ينضم مستخدم جديد
     socket.on("user-connected", userId => {
       connectToNewUser(userId, stream);
     });
 
-    socket.on("signal", data => {
-      if (peers[data.userId]) {
-        peers[data.userId].addIceCandidate(new RTCIceCandidate(data.signal));
+    // استقبال الإشارات من الآخرين
+    socket.on("signal", async data => {
+      let peer = peers[data.userId];
+      if (!peer) {
+        peer = createPeer(data.userId, stream, false);
+        peers[data.userId] = peer;
+      }
+
+      if (data.signal.type === "offer") {
+        await peer.setRemoteDescription(new RTCSessionDescription(data.signal));
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+        socket.emit("signal", { roomId, signal: peer.localDescription });
+      } else if (data.signal.type === "answer") {
+        await peer.setRemoteDescription(new RTCSessionDescription(data.signal));
+      } else if (data.signal.candidate) {
+        await peer.addIceCandidate(new RTCIceCandidate(data.signal));
       }
     });
 
+    // عند خروج مستخدم
     socket.on("user-disconnected", userId => {
       if (peers[userId]) {
         peers[userId].close();
@@ -38,25 +57,39 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   })
   .catch(err => console.error("خطأ في الوصول للكاميرا أو الميكروفون:", err));
 
-// دوال WebRTC
+// إنشاء Peer جديد
 function connectToNewUser(userId, stream) {
-  const peer = new RTCPeerConnection();
+  const peer = createPeer(userId, stream, true);
   peers[userId] = peer;
-
-  stream.getTracks().forEach(track => peer.addTrack(track, stream));
-
-  const video = document.createElement("video");
-  video.autoplay = true;
-
-  peer.ontrack = e => addVideoStream(e.streams[0], `👤 ${userId}`);
-  peer.onicecandidate = e => {
-    if (e.candidate) socket.emit("signal", { userId, signal: e.candidate });
-  };
-
-  peer.createOffer().then(offer => peer.setLocalDescription(offer))
-      .then(() => socket.emit("signal", { userId, signal: peer.localDescription }));
 }
 
+// دالة إنشاء Peer
+function createPeer(userId, stream, initiator) {
+  const peer = new RTCPeerConnection();
+
+  // إضافة المسارات
+  stream.getTracks().forEach(track => peer.addTrack(track, stream));
+
+  // استقبال فيديو من الآخرين
+  peer.ontrack = e => addVideoStream(e.streams[0], `👤 ${userId}`);
+
+  // إرسال ICE candidates
+  peer.onicecandidate = e => {
+    if (e.candidate) {
+      socket.emit("signal", { roomId, signal: e.candidate });
+    }
+  };
+
+  // إذا initiator، إنشاء عرض
+  if (initiator) {
+    peer.createOffer().then(offer => peer.setLocalDescription(offer))
+        .then(() => socket.emit("signal", { roomId, signal: peer.localDescription }));
+  }
+
+  return peer;
+}
+
+// إضافة الفيديو للشاشة
 function addVideoStream(stream, label) {
   const video = document.createElement("video");
   video.srcObject = stream;
