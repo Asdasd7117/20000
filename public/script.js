@@ -5,6 +5,7 @@ myVideo.muted = true;
 let myStream;
 const peers = {};
 
+// الحصول على الفيديو والصوت
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
     myStream = stream;
@@ -15,10 +16,12 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     const roomId = prompt("ادخل اسم الغرفة:");
     socket.emit('join-room', roomId);
 
+    // عند انضمام مستخدم جديد
     socket.on('user-connected', userId => {
       connectToNewUser(userId, stream);
     });
 
+    // استقبال الإشارات من peers
     socket.on('signal', async data => {
       if (!peers[data.from]) return;
       if (data.sdp) {
@@ -33,8 +36,12 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       }
     });
 
+    // عند خروج مستخدم
     socket.on('user-disconnected', userId => {
-      if (peers[userId]) peers[userId].close();
+      if (peers[userId]) {
+        peers[userId].close();
+        delete peers[userId];
+      }
     });
 
     // الدردشة
@@ -61,32 +68,39 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     shareScreenBtn.onclick = async () => {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        const screenVideo = document.createElement('video');
-        screenVideo.srcObject = screenStream;
-        screenVideo.play();
-        videos.appendChild(screenVideo);
 
+        // تبديل مسار الفيديو لكل peers
         for (let id in peers) {
           const sender = peers[id].getSenders().find(s => s.track.kind === 'video');
           if (sender) sender.replaceTrack(screenStream.getVideoTracks()[0]);
         }
 
+        // عرض الشاشة محليًا
+        const screenVideo = document.createElement('video');
+        screenVideo.srcObject = screenStream;
+        screenVideo.autoplay = true;
+        screenVideo.playsInline = true;
+        videos.appendChild(screenVideo);
+
+        // إعادة الفيديو الأصلي عند انتهاء مشاركة الشاشة
         screenStream.getVideoTracks()[0].onended = () => {
           for (let id in peers) {
             const sender = peers[id].getSenders().find(s => s.track.kind === 'video');
             if (sender) sender.replaceTrack(myStream.getVideoTracks()[0]);
           }
           screenVideo.remove();
-        }
+        };
 
       } catch (err) {
         console.error("خطأ في مشاركة الشاشة:", err);
+        alert("لم يتمكن التطبيق من مشاركة الشاشة. تأكد من السماح بالوصول.");
       }
     }
 
   })
-  .catch(err => console.error(err));
+  .catch(err => console.error("خطأ في الوصول للكاميرا أو الميكروفون:", err));
 
+// دالة إنشاء اتصال مع مستخدم جديد
 function connectToNewUser(userId, stream) {
   const peer = new RTCPeerConnection();
   peers[userId] = peer;
@@ -102,7 +116,8 @@ function connectToNewUser(userId, stream) {
   peer.ontrack = e => {
     const video = document.createElement('video');
     video.srcObject = e.streams[0];
-    video.play();
+    video.autoplay = true;
+    video.playsInline = true;
     videos.appendChild(video);
   };
 
