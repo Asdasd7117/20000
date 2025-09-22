@@ -8,7 +8,7 @@ const peers = {};
 // الحصول على معرف الغرفة من الرابط
 let roomId = window.location.pathname.split('/')[2];
 
-// الانضمام للغرفة
+// الانضمام للغرفة والحصول على الفيديو والصوت
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
     myStream = stream;
@@ -21,13 +21,15 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     // عرض رابط الغرفة
     document.getElementById('roomLink').value = window.location.href;
 
-    // التعامل مع مستخدمين جدد
+    // عند انضمام مستخدم جديد
     socket.on('user-connected', userId => {
       connectToNewUser(userId, stream);
     });
 
+    // استقبال الإشارات (signals) من مستخدمين آخرين
     socket.on('signal', async data => {
       if (!peers[data.from]) return;
+
       if (data.sdp) {
         await peers[data.from].setRemoteDescription(new RTCSessionDescription(data.sdp));
         if (data.sdp.type === 'offer') {
@@ -40,6 +42,7 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       }
     });
 
+    // عند انقطاع مستخدم
     socket.on('user-disconnected', userId => {
       if (peers[userId]) {
         peers[userId].close();
@@ -69,19 +72,22 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   })
   .catch(err => console.error("خطأ في الوصول للكاميرا أو الميكروفون:", err));
 
-// دالة إنشاء اتصال مع مستخدم جديد
+// دالة الاتصال بمستخدم جديد
 function connectToNewUser(userId, stream) {
   const peer = new RTCPeerConnection();
   peers[userId] = peer;
 
+  // إضافة مسارات الفيديو والصوت
   stream.getTracks().forEach(track => peer.addTrack(track, stream));
 
+  // عند وجود ICE candidates
   peer.onicecandidate = e => {
     if (e.candidate) {
       socket.emit('signal', { to: userId, candidate: e.candidate });
     }
   };
 
+  // استقبال مسار فيديو المستخدم الجديد
   peer.ontrack = e => {
     const video = document.createElement('video');
     video.srcObject = e.streams[0];
@@ -90,7 +96,9 @@ function connectToNewUser(userId, stream) {
     videos.appendChild(video);
   };
 
-  peer.createOffer().then(offer => peer.setLocalDescription(offer))
+  // إنشاء عرض (offer) وارساله للمستخدم الجديد
+  peer.createOffer()
+    .then(offer => peer.setLocalDescription(offer))
     .then(() => {
       socket.emit('signal', { to: userId, sdp: peer.localDescription });
     });
