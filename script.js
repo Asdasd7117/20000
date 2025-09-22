@@ -48,7 +48,10 @@ if (createBtn) {
 async function startLocal() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentCamera }, audio: true });
-    if (localVideo) localVideo.srcObject = localStream;
+    if (localVideo) {
+      localVideo.srcObject = localStream;
+      localVideo.play().catch(err => console.error("فشل التشغيل التلقائي:", err)); // التأكد من التشغيل
+    }
   } catch (err) {
     console.error("فشل الوصول للكاميرا/الميكروفون:", err);
     alert("يرجى التأكد من السماح بالوصول إلى الكاميرا والميكروفون!");
@@ -59,9 +62,17 @@ async function startLocal() {
 if (switchCamBtn) {
   switchCamBtn.onclick = async () => {
     currentCamera = currentCamera === "user" ? "environment" : "user";
-    if (localStream) localStream.getTracks().forEach(track => track.stop());
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
     await startLocal();
-    Object.values(pcs).forEach(pc => localStream.getTracks().forEach(track => pc.addTrack(track, localStream)));
+    Object.values(pcs).forEach(pc => {
+      localStream.getTracks().forEach(track => {
+        if (!pc.getSenders().some(sender => sender.track === track)) {
+          pc.addTrack(track, localStream);
+        }
+      });
+    });
   };
 }
 
@@ -79,7 +90,13 @@ function createPC(remoteId) {
   const pc = new RTCPeerConnection(ICE_CONFIG);
   pcs[remoteId] = pc;
 
-  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  if (localStream) {
+    localStream.getTracks().forEach(track => {
+      if (!pc.getSenders().some(sender => sender.track === track)) {
+        pc.addTrack(track, localStream);
+      }
+    });
+  }
 
   pc.ontrack = e => {
     let vid = document.getElementById("remote_" + remoteId);
@@ -94,6 +111,7 @@ function createPC(remoteId) {
       remoteContainer.appendChild(vid);
     }
     vid.srcObject = e.streams[0];
+    vid.play().catch(err => console.error("فشل تشغيل الفيديو البعيد:", err));
   };
 
   pc.onicecandidate = ev => {
@@ -177,7 +195,10 @@ if (endCallBtn) {
   endCallBtn.onclick = () => {
     Object.values(pcs).forEach(pc => pc.close());
     pcs = {};
-    if (localStream) localStream.getTracks().forEach(track => track.stop());
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      localVideo.srcObject = null; // إفراغ المصدر لتجنب التكرار
+    }
     window.location.href = "/";
   };
 }
