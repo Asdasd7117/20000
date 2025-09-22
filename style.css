@@ -95,14 +95,14 @@ body {
 
 #localVideo {
   position: absolute;
-  bottom: 25px;
-  right: 25px;
-  width: 400px;   /* تعديل حسب طلبك */
-  height: 800px;  /* تعديل حسب طلبك */
-  border-radius: 20px;
-  border: 3px solid #fff;
+  bottom: 20px;
+  right: 20px;
+  width: 150px;
+  height: 100px;
+  border-radius: 10px;
+  border: 2px solid #fff;
   object-fit: cover;
-  box-shadow: 0 0 30px rgba(0,0,0,0.8);
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
   z-index: 5;
 }
 
