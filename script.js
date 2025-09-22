@@ -24,21 +24,25 @@ if (createBtn) {
   createBtn.onclick = async () => {
     try {
       const res = await fetch(`${SERVER_URL}/create-room`);
+      if (!res.ok) throw new Error("فشل الاتصال بالخادم");
       const data = await res.json();
+      if (!data.roomId || !data.token) throw new Error("بيانات الغرفة غير صحيحة");
       roomId = data.roomId;
       token = data.token;
 
-      const fullLink = window.location.origin + data.link; // الرابط الكامل
+      const fullLink = `${window.location.origin}/room.html?roomId=${roomId}&t=${token}`; // رابط مباشر
       roomLink.textContent = fullLink;
+      copyBtn.style.display = "inline-block"; // اعرض زر النسخ
       copyBtn.onclick = () => {
         navigator.clipboard.writeText(fullLink)
           .then(() => alert("تم نسخ الرابط!"))
           .catch(() => alert("حدث خطأ أثناء النسخ"));
       };
 
-      alert("انسخ الرابط وشاركه مع صديقك!");
+      alert("تم إنشاء الغرفة! انسخ الرابط وشاركه.");
+      await joinRoom(roomId, token); // ابدأ الغرفة فورًا
     } catch (err) {
-      alert("حدث خطأ أثناء إنشاء الغرفة");
+      alert(`حدث خطأ: ${err.message}. تحقق من الخادم أو الاتصال بالإنترنت.`);
       console.error(err);
     }
   };
@@ -50,11 +54,11 @@ async function startLocal() {
     localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentCamera }, audio: true });
     if (localVideo) {
       localVideo.srcObject = localStream;
-      localVideo.play().catch(err => console.error("فشل التشغيل التلقائي:", err));
+      await localVideo.play().catch(err => console.error("فشل التشغيل التلقائي:", err));
     }
   } catch (err) {
     console.error("فشل الوصول للكاميرا/الميكروفون:", err);
-    alert("يرجى التأكد من السماح بالوصول إلى الكاميرا والميكروفون!");
+    alert("يرجى السماح بالوصول إلى الكاميرا والميكروفون!");
   }
 }
 
@@ -81,7 +85,9 @@ async function joinRoom(rid, tok) {
   await startLocal();
   roomId = rid;
   token = tok;
-  socket.emit("join-room", { roomId, token });
+  socket.emit("join-room", { roomId, token }, (response) => {
+    if (response.error) alert(`خطأ في الانضمام: ${response.error}`);
+  });
 }
 
 // ------------------- إنشاء PeerConnection -------------------
@@ -113,8 +119,12 @@ function createPC(remoteId) {
 }
 
 // ------------------- WebSocket -------------------
+socket.on("connect", () => console.log("تم الاتصال بالسيرفر"));
+socket.on("connect_error", (err) => console.error("فشل الاتصال بالسيرفر:", err));
+
 socket.on("joined", async ({ selfId: id, others }) => {
   selfId = id;
+  console.log("انضممت بنجاح، معرفي:", id, "آخرون:", others);
   for (let otherId of others) {
     const pc = createPC(otherId);
     const offer = await pc.createOffer();
@@ -123,13 +133,15 @@ socket.on("joined", async ({ selfId: id, others }) => {
   }
 });
 
-socket.on("user-joined", async otherId => createPC(otherId));
+socket.on("user-joined", async otherId => {
+  console.log("مستخدم جديد انضم:", otherId);
+  createPC(otherId);
+});
 
 socket.on("offer", async ({ from, sdp }) => {
   const pc = createPC(from);
   await pc.setRemoteDescription(new RTCSessionDescription(sdp));
 
-  // ✅ عرض رسالة موافقة قبل إرسال الـ answer
   const agree = confirm("هل تريد قبول المكالمة من هذا الشخص؟");
   if (!agree) {
     alert("رفضت المكالمة.");
@@ -153,7 +165,7 @@ socket.on("candidate", ({ from, candidate }) => {
   pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.error);
 });
 
-socket.on("room-error", msg => alert(msg));
+socket.on("room-error", msg => alert(`خطأ في الغرفة: ${msg}`));
 
 socket.on("user-left", id => {
   if (remoteVideo) remoteVideo.srcObject = null;
@@ -200,7 +212,6 @@ if (params.has("roomId") && params.has("t")) {
   const rid = params.get("roomId");
   const tok = params.get("t");
 
-  // ✅ عرض رسالة موافقة قبل الانضمام
   const agree = confirm("هل تريد الانضمام إلى هذه الغرفة؟");
   if (agree) {
     joinRoom(rid, tok);
