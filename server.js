@@ -1,45 +1,48 @@
-const express = require('express');
-const { v4: uuidv4 } = require('uuid');
+import express from "express";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import { v4 as uuidv4 } from "uuid";
+
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const server = createServer(app);
+const io = new Server(server);
 
-app.use(express.static('public'));
+app.use(express.static("public"));
 
-// أي زائر يحصل على غرفة خاصة تلقائيًا
-app.get('/', (req, res) => {
-  const roomId = uuidv4();
+// لو دخل المستخدم الرابط الأساسي /
+app.get("/", (req, res) => {
+  const roomId = uuidv4(); // إنشاء معرف فريد للغرفة
   res.redirect(`/room/${roomId}`);
 });
 
 // صفحة الغرفة
-app.get('/room/:roomId', (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');
+app.get("/room/:roomId", (req, res) => {
+  res.sendFile(process.cwd() + "/public/index.html");
 });
 
-const rooms = {};
+// سوكت لإدارة الغرف
+io.on("connection", (socket) => {
+  socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    socket.to(roomId).emit("user-connected", socket.id);
 
-io.on('connection', (socket) => {
-  socket.on('join-room', (roomId) => {
-    if (!rooms[roomId]) rooms[roomId] = [];
-    rooms[roomId].push(socket.id);
-
-    socket.to(roomId).emit('user-connected', socket.id);
-
-    socket.on('signal', (data) => {
-      io.to(data.to).emit('signal', { ...data, from: socket.id });
+    // تمرير رسائل WebRTC
+    socket.on("signal", (data) => {
+      io.to(data.userId).emit("signal", {
+        userId: socket.id,
+        signal: data.signal,
+      });
     });
 
-    socket.on('chat-message', msg => {
-      socket.to(roomId).emit('chat-message', { user: socket.id, msg });
-    });
-
-    socket.on('disconnect', () => {
-      rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
-      socket.to(roomId).emit('user-disconnected', socket.id);
+    // مغادرة المستخدم
+    socket.on("disconnect", () => {
+      socket.to(roomId).emit("user-disconnected", socket.id);
     });
   });
 });
 
+// تشغيل السيرفر
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
