@@ -1,61 +1,62 @@
 const socket = io();
-
-// معرف الغرفة من الرابط
-let roomId = window.location.pathname.split("/")[2];
-
-// Peer Connections
-const peers = {};
 const videoGrid = document.getElementById("videos");
+const peers = {};
+
+// إنشاء UUID لغرفة الزائر تلقائيًا إذا لم يكن الرابط يحتوي معرف
+let roomId = window.location.pathname.split("/")[2];
+if (!roomId) {
+  roomId = crypto.randomUUID(); // كل زائر له UUID مختلف
+  window.history.replaceState(null, "Room", `/room/${roomId}`);
+}
+
+// عرض رابط الغرفة في الصفحة
+document.getElementById("roomLink").value = window.location.href;
 
 // إعداد الفيديو المحلي
-navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
-  addVideoStream(stream, "أنا");
+navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+  .then(stream => {
+    addVideoStream(stream, "أنا");
 
-  socket.emit("join-room", roomId);
+    socket.emit("join-room", roomId);
 
-  socket.on("user-connected", (userId) => {
-    connectToNewUser(userId, stream);
-  });
-});
+    socket.on("user-connected", userId => {
+      connectToNewUser(userId, stream);
+    });
 
-// التعامل مع WebRTC
+    socket.on("signal", data => {
+      if (peers[data.userId]) {
+        peers[data.userId].addIceCandidate(new RTCIceCandidate(data.signal));
+      }
+    });
+
+    socket.on("user-disconnected", userId => {
+      if (peers[userId]) {
+        peers[userId].close();
+        delete peers[userId];
+      }
+    });
+  })
+  .catch(err => console.error("خطأ في الوصول للكاميرا أو الميكروفون:", err));
+
+// دوال WebRTC
 function connectToNewUser(userId, stream) {
   const peer = new RTCPeerConnection();
-  stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+  peers[userId] = peer;
+
+  stream.getTracks().forEach(track => peer.addTrack(track, stream));
 
   const video = document.createElement("video");
   video.autoplay = true;
 
-  peer.ontrack = (event) => {
-    video.srcObject = event.streams[0];
-    addVideoStream(video.srcObject, `👤 ${userId}`);
+  peer.ontrack = e => addVideoStream(e.streams[0], `👤 ${userId}`);
+  peer.onicecandidate = e => {
+    if (e.candidate) socket.emit("signal", { userId, signal: e.candidate });
   };
 
-  peer.onicecandidate = (event) => {
-    if (event.candidate) {
-      socket.emit("signal", { userId, signal: event.candidate });
-    }
-  };
-
-  peers[userId] = peer;
+  peer.createOffer().then(offer => peer.setLocalDescription(offer))
+      .then(() => socket.emit("signal", { userId, signal: peer.localDescription }));
 }
 
-// استقبال الإشارات
-socket.on("signal", (data) => {
-  const peer = peers[data.userId];
-  if (peer) {
-    peer.addIceCandidate(new RTCIceCandidate(data.signal));
-  }
-});
-
-socket.on("user-disconnected", (userId) => {
-  if (peers[userId]) {
-    peers[userId].close();
-    delete peers[userId];
-  }
-});
-
-// إضافة الفيديو للشاشة
 function addVideoStream(stream, label) {
   const video = document.createElement("video");
   video.srcObject = stream;
@@ -72,21 +73,8 @@ function addVideoStream(stream, label) {
   videoGrid.appendChild(container);
 }
 
-// رابط الغرفة
-document.getElementById("roomLink").value = window.location.href;
-
+// نسخ رابط الغرفة
 function copyLink() {
   navigator.clipboard.writeText(window.location.href);
   alert("تم نسخ الرابط ✅");
-}
-
-// دردشة نصية (بسيطة)
-function sendMessage() {
-  const input = document.getElementById("chatInput");
-  const msg = input.value;
-  if (msg.trim()) {
-    const chatBox = document.getElementById("chatBox");
-    chatBox.innerHTML += `<p><b>أنا:</b> ${msg}</p>`;
-    input.value = "";
-  }
 }
