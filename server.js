@@ -6,7 +6,7 @@ const io = require('socket.io')(http);
 
 app.use(express.static('public'));
 
-// صفحة البداية - إنشاء رابط غرفة جديد
+// أي زائر يحصل على غرفة خاصة تلقائيًا
 app.get('/', (req, res) => {
   const roomId = uuidv4();
   res.redirect(`/room/${roomId}`);
@@ -20,8 +20,6 @@ app.get('/room/:roomId', (req, res) => {
 const rooms = {};
 
 io.on('connection', (socket) => {
-  console.log('User connected: ' + socket.id);
-
   socket.on('join-room', (roomId) => {
     if (!rooms[roomId]) rooms[roomId] = [];
     rooms[roomId].push(socket.id);
