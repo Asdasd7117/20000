@@ -1,8 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const fs = require('fs');
 const path = require('path');
-
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
@@ -11,19 +9,13 @@ app.use(express.static('public'));
 
 // أي زائر يحصل على غرفة جديدة تلقائيًا
 app.get('/', (req, res) => {
-  const roomId = uuidv4(); // UUID جديد لكل زيارة
+  const roomId = uuidv4(); 
   res.redirect(`/room/${roomId}`);
 });
 
 // صفحة الغرفة
 app.get('/room/:roomId', (req, res) => {
-  const filePath = path.join(__dirname, 'public', 'index.html');
-  let html = fs.readFileSync(filePath, 'utf8');
-  
-  // استبدال {{ROOM_ID}} بالمعرف الفعلي للغرفة
-  html = html.replace('{{ROOM_ID}}', req.params.roomId);
-  
-  res.send(html);
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const rooms = {};
