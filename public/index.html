@@ -1,44 +1,44 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VideoConnect</title>
-<link rel="stylesheet" href="/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VideoConnect</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<h1>VideoConnect</h1>
+  <h1>VideoConnect</h1>
 
-<div id="roomInfo">
-  <p>رابط غرفتك:</p>
-  <input type="text" id="roomLink" readonly>
-  <button onclick="copyLink()">نسخ الرابط</button>
-</div>
+  <div id="roomInfo">
+    <p>رابط غرفتك:</p>
+    <input type="text" id="roomLink" readonly>
+    <button onclick="copyLink()">نسخ الرابط</button>
+  </div>
 
-<div id="videos"></div>
+  <div id="videos"></div>
 
-<div id="controls">
-  <input type="text" id="chatInput" placeholder="اكتب رسالة...">
-  <button id="sendChat">إرسال</button>
-</div>
+  <div id="controls">
+    <input type="text" id="chatInput" placeholder="اكتب رسالة...">
+    <button id="sendChat">إرسال</button>
+  </div>
 
-<div id="chatBox"></div>
+  <div id="chatBox"></div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 
-<script>
-  // استخراج roomId من الرابط مباشرة
-  const roomId = window.location.pathname.split('/')[2];
-  document.getElementById('roomLink').value = window.location.origin + '/room/' + roomId;
+  <script>
+    // استخراج roomId من الرابط
+    const pathParts = window.location.pathname.split('/');
+    const roomId = pathParts[pathParts.length - 1]; // آخر جزء من /room/xxxx
+    document.getElementById('roomLink').value = window.location.href;
 
-  function copyLink() {
-    const link = window.location.origin + '/room/' + roomId;
-    navigator.clipboard.writeText(link);
-    alert('تم نسخ الرابط: ' + link);
-  }
-</script>
+    function copyLink() {
+      navigator.clipboard.writeText(window.location.href);
+      alert('تم نسخ الرابط: ' + window.location.href);
+    }
+  </script>
 
-<script src="/script.js"></script>
+  <script src="/script.js"></script>
 </body>
 </html>
