@@ -5,7 +5,10 @@ myVideo.muted = true;
 let myStream;
 const peers = {};
 
-// الحصول على الفيديو والصوت
+// الحصول على معرف الغرفة من الرابط
+let roomId = window.location.pathname.split('/')[2];
+
+// الانضمام للغرفة
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
     myStream = stream;
@@ -13,15 +16,16 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     myVideo.play();
     videos.appendChild(myVideo);
 
-    const roomId = prompt("ادخل اسم الغرفة:");
     socket.emit('join-room', roomId);
 
-    // عند انضمام مستخدم جديد
+    // عرض رابط الغرفة
+    document.getElementById('roomLink').value = window.location.href;
+
+    // التعامل مع مستخدمين جدد
     socket.on('user-connected', userId => {
       connectToNewUser(userId, stream);
     });
 
-    // استقبال الإشارات من peers
     socket.on('signal', async data => {
       if (!peers[data.from]) return;
       if (data.sdp) {
@@ -36,7 +40,6 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       }
     });
 
-    // عند خروج مستخدم
     socket.on('user-disconnected', userId => {
       if (peers[userId]) {
         peers[userId].close();
@@ -62,40 +65,6 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       chatBox.innerHTML += `<p><b>${data.user}:</b> ${data.msg}</p>`;
       chatBox.scrollTop = chatBox.scrollHeight;
     });
-
-    // مشاركة الشاشة
-    const shareScreenBtn = document.getElementById('shareScreen');
-    shareScreenBtn.onclick = async () => {
-      try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-
-        // تبديل مسار الفيديو لكل peers
-        for (let id in peers) {
-          const sender = peers[id].getSenders().find(s => s.track.kind === 'video');
-          if (sender) sender.replaceTrack(screenStream.getVideoTracks()[0]);
-        }
-
-        // عرض الشاشة محليًا
-        const screenVideo = document.createElement('video');
-        screenVideo.srcObject = screenStream;
-        screenVideo.autoplay = true;
-        screenVideo.playsInline = true;
-        videos.appendChild(screenVideo);
-
-        // إعادة الفيديو الأصلي عند انتهاء مشاركة الشاشة
-        screenStream.getVideoTracks()[0].onended = () => {
-          for (let id in peers) {
-            const sender = peers[id].getSenders().find(s => s.track.kind === 'video');
-            if (sender) sender.replaceTrack(myStream.getVideoTracks()[0]);
-          }
-          screenVideo.remove();
-        };
-
-      } catch (err) {
-        console.error("خطأ في مشاركة الشاشة:", err);
-        alert("لم يتمكن التطبيق من مشاركة الشاشة. تأكد من السماح بالوصول.");
-      }
-    }
 
   })
   .catch(err => console.error("خطأ في الوصول للكاميرا أو الميكروفون:", err));
