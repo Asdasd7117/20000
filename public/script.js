@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>غرفة الفيديو</title>
 <style>
-body { background:#111; color:#fff; text-align:center; font-family:Arial; }
+body { background:#111; color:#fff; font-family:Arial; text-align:center; }
 #videos { display:flex; flex-wrap:wrap; justify-content:center; }
 video { width:300px; margin:5px; border-radius:10px; border:2px solid #0f0; }
 </style>
@@ -15,55 +15,58 @@ video { width:300px; margin:5px; border-radius:10px; border:2px solid #0f0; }
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-const socket = io();
-const roomId = window.location.pathname.split("/").pop();
-const videosDiv = document.getElementById("videos");
-const peers = {};
+const socket=io();
+const roomId=window.location.pathname.split("/").pop();
+const videosDiv=document.getElementById("videos");
+const peers={};
 let localStream;
 
-// STUN server
-const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+// STUN + TURN مجاني
+const config={
+  iceServers:[
+    { urls:"stun:stun.l.google.com:19302" },
+    { urls:"turn:openrelay.metered.ca:443", username:"openrelayproject", credential:"openrelayproject" }
+  ]
+};
 
-// إضافة فيديو للشاشة
-function addVideo(stream, id) {
-  let video = document.getElementById(id);
+// إضافة فيديو
+function addVideo(stream,id){
+  let video=document.getElementById(id);
   if(!video){
-    video = document.createElement("video");
-    video.id = id;
-    video.autoplay = true;
-    video.playsInline = true;
+    video=document.createElement("video");
+    video.id=id;
+    video.autoplay=true;
+    video.playsInline=true;
     videosDiv.appendChild(video);
   }
-  video.srcObject = stream;
+  video.srcObject=stream;
 }
 
-// الحصول على كاميرا وصوت
+// الحصول على كاميرا/ميكروفون
 navigator.mediaDevices.getUserMedia({video:true,audio:true})
 .then(stream=>{
-  localStream = stream;
+  localStream=stream;
   addVideo(stream,"me");
   socket.emit("join-room",roomId);
 })
 .catch(err=>console.error("خطأ بالكاميرا/ميكروفون:",err));
 
-// إنشاء Peer
-function createPeer(targetId, initiator){
-  const pc = new RTCPeerConnection(config);
+function createPeer(targetId,initiator){
+  const pc=new RTCPeerConnection(config);
   localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
 
-  pc.ontrack = event => addVideo(event.streams[0], targetId);
+  pc.ontrack=event=>addVideo(event.streams[0],targetId);
 
-  pc.onicecandidate = event => {
+  pc.onicecandidate=event=>{
     if(event.candidate)
       socket.emit("signal",{to:targetId,signal:{candidate:event.candidate}});
   };
-
   return pc;
 }
 
-// استقبال المستخدمين الجدد
-socket.on("user-joined", userId=>{
-  const pc = createPeer(userId,true);
+// استقبال مستخدمين جدد
+socket.on("user-joined",userId=>{
+  const pc=createPeer(userId,true);
   peers[userId]=pc;
   pc.createOffer().then(offer=>{
     pc.setLocalDescription(offer);
@@ -73,7 +76,7 @@ socket.on("user-joined", userId=>{
 
 // استقبال إشارات
 socket.on("signal",async data=>{
-  let pc = peers[data.from];
+  let pc=peers[data.from];
   if(!pc){ pc=createPeer(data.from,false); peers[data.from]=pc; }
 
   if(data.signal.sdp){
