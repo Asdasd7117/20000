@@ -1,31 +1,35 @@
-const express = require("express");
-const { v4: uuidV4 } = require("uuid");
-const http = require("http");
-const { Server } = require("socket.io");
+import express from "express";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 const app = express();
-const server = http.createServer(app);
+const server = createServer(app);
 const io = new Server(server);
 
 app.use(express.static("public"));
 
-// إذا فتح المستخدم الرابط الرئيسي → أنشئ غرفة جديدة
+// الصفحة الرئيسية تعرض index.html مباشرة
 app.get("/", (req, res) => {
-  res.redirect(`/room/${uuidV4()}`);
+  res.sendFile(process.cwd() + "/public/index.html");
 });
 
 // صفحة الغرفة
-app.get("/room/:room", (req, res) => {
-  res.sendFile(__dirname + "/public/room.html");
+app.get("/room/:roomId", (req, res) => {
+  res.sendFile(process.cwd() + "/public/index.html");
 });
 
-io.on("connection", socket => {
-  socket.on("join-room", (roomId, userId) => {
+// إدارة الغرف والمستخدمين
+io.on("connection", (socket) => {
+  socket.on("join-room", (roomId) => {
     socket.join(roomId);
-    socket.to(roomId).emit("user-connected", userId);
+    socket.to(roomId).emit("user-connected", socket.id);
+
+    socket.on("signal", (data) => {
+      io.to(data.userId).emit("signal", { userId: socket.id, signal: data.signal });
+    });
 
     socket.on("disconnect", () => {
-      socket.to(roomId).emit("user-disconnected", userId);
+      socket.to(roomId).emit("user-disconnected", socket.id);
     });
   });
 });
