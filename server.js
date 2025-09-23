@@ -9,13 +9,13 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-// أي رابط يبدأ بـ /room يرجع ملف room.html
+// أي رابط /room/:roomId يعيد room.html
 app.get("/room/:roomId", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "room.html"));
 });
 
-// Socket.IO
-const rooms = {}; // لتخزين مستخدمي كل غرفة
+// تخزين المستخدمين في كل غرفة
+const rooms = {};
 
 io.on("connection", socket => {
   console.log("🔌 مستخدم متصل:", socket.id);
@@ -24,12 +24,10 @@ io.on("connection", socket => {
     socket.join(roomId);
     if (!rooms[roomId]) rooms[roomId] = [];
     rooms[roomId].push(socket.id);
-    console.log(`📌 المستخدم ${socket.id} دخل الغرفة: ${roomId}`);
 
     // إخطار المستخدمين الآخرين
     socket.to(roomId).emit("user-joined", socket.id);
 
-    // Relay signals بين جميع المستخدمين
     socket.on("signal", data => {
       socket.to(data.to).emit("signal", {
         from: socket.id,
@@ -45,5 +43,4 @@ io.on("connection", socket => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 السيرفر شغال على البورت ${PORT}`));
+server.listen(process.env.PORT || 3000, () => console.log("🚀 السيرفر شغال"));
