@@ -3,24 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <title>غرفة الفيديو</title>
-  <link rel="stylesheet" href="/style.css">
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: #fff; text-align: center; }
+    video { width: 45%; margin: 10px; background: #000; }
+  </style>
 </head>
 <body>
-  <header>
-    <input type="text" id="roomLink" readonly>
-    <button id="copyBtn" onclick="copyLink()">📋 نسخ الرابط</button>
-  </header>
-
-  <main id="video-grid"></main>
-
-  <footer id="chat">
-    <input type="text" id="messageInput" placeholder="اكتب رسالة...">
-    <button id="sendBtn">إرسال</button>
-    <div id="messages"></div>
-  </footer>
+  <h2>📹 غرفة فيديو</h2>
+  <video id="localVideo" autoplay playsinline muted></video>
+  <video id="remoteVideo" autoplay playsinline></video>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-  <script src="/script.js"></script>
+  <script>
+    const socket = io();
+    const roomId = new URLSearchParams(window.location.search).get("roomId");
+    const localVideo = document.getElementById("localVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
+    let localStream;
+    let peer;
+
+    async function init() {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localVideo.srcObject = localStream;
+
+      socket.emit("join-room", roomId);
+
+      socket.on("user-joined", async (userId) => {
+        console.log("✅ مستخدم جديد دخل:", userId);
+        createPeer(true);
+      });
+
+      socket.on("offer", async (data) => {
+        console.log("📩 استلمت Offer");
+        createPeer(false);
+        await peer.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+        socket.emit("answer", { sdp: answer, room: roomId });
+      });
+
+      socket.on("answer", async (data) => {
+        console.log("📩 استلمت Answer");
+        await peer.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      });
+
+      socket.on("candidate", async (data) => {
+        console.log("📩 استلمت Candidate");
+        try {
+          await peer.addIceCandidate(new RTCIceCandidate(data.candidate));
+        } catch (err) {
+          console.error("🚨 خطأ في Candidate:", err);
+        }
+      });
+    }
+
+    function createPeer(isCaller) {
+      peer = new RTCPeerConnection();
+      localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
+
+      peer.ontrack = (event) => {
+        remoteVideo.srcObject = event.streams[0];
+      };
+
+      peer.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit("candidate", { candidate: event.candidate, room: roomId });
+        }
+      };
+
+      if (isCaller) {
+        peer.createOffer().then(offer => {
+          peer.setLocalDescription(offer);
+          socket.emit("offer", { sdp: offer, room: roomId });
+        });
+      }
+    }
+
+    init();
+  </script>
 </body>
 </html>
