@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
+const { v4: uuidV4 } = require("uuid");
 
 const app = express();
 const server = http.createServer(app);
@@ -9,7 +10,13 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-// أي رابط يبدأ بـ /room يرجع ملف room.html
+// عند الدخول على الرابط الأساسي → أنشئ غرفة جديدة
+app.get("/", (req, res) => {
+  const roomId = uuidV4();
+  res.redirect(`/room/${roomId}`);
+});
+
+// أي رابط غرفة يفتح نفس الصفحة room.html
 app.get("/room/:roomId", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "room.html"));
 });
@@ -19,7 +26,7 @@ io.on("connection", (socket) => {
 
   socket.on("join-room", (roomId) => {
     socket.join(roomId);
-    console.log(`📌 المستخدم ${socket.id} دخل الغرفة: ${roomId}`);
+    console.log(`📌 ${socket.id} دخل الغرفة: ${roomId}`);
     socket.to(roomId).emit("user-joined", socket.id);
   });
 
