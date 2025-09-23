@@ -1,79 +1,81 @@
 const socket = io();
 const videoGrid = document.getElementById("videos");
 const peers = {};
+let localStream;
 
-// استخراج roomId من الرابط
+// roomId من الرابط
 let roomId = window.location.pathname.split("/")[2];
 if (!roomId) {
   roomId = crypto.randomUUID();
   window.history.replaceState(null, "Room", `/room/${roomId}`);
 }
+console.log("Room ID:", roomId);
 
-// عرض الرابط
 document.getElementById("roomLink").value = window.location.href;
 
-// أول خطوة: الحصول على MediaStream قبل الانضمام للغرفة
+// الحصول على الميديا المحلية
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
+    console.log("تم الحصول على MediaStream المحلي");
+    localStream = stream;
     addVideoStream(stream, "أنا");
 
-    // الانضمام للغرفة بعد تجهيز الفيديو
     socket.emit("join-room", roomId);
+    console.log("تم إرسال join-room:", roomId);
 
-    // استقبال مستخدمين جدد
-    socket.on("user-connected", userId => connectToNewUser(userId, stream));
+    socket.on("user-connected", userId => {
+      console.log("مستخدم جديد متصل:", userId);
+      const peer = createPeer(userId, stream, true);
+      peers[userId] = peer;
+    });
 
-    // استقبال إشارات WebRTC
     socket.on("signal", data => {
-      if (!peers[data.userId]) return;
-
-      const peer = peers[data.userId];
-      if (data.signal.type === "offer") {
-        peer.setRemoteDescription(new RTCSessionDescription(data.signal))
-          .then(() => peer.createAnswer())
-          .then(answer => peer.setLocalDescription(answer))
-          .then(() => {
-            socket.emit("signal", { userId: data.userId, signal: peer.localDescription });
-          });
-      } else if (data.signal.type === "answer") {
-        peer.setRemoteDescription(new RTCSessionDescription(data.signal));
-      } else if (data.signal.candidate) {
-        peer.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
+      console.log("تم استلام signal من:", data.userId, data.signal);
+      let peer = peers[data.userId];
+      if (!peer) {
+        console.log("إنشاء Peer جديد للطرف المستقبل");
+        peer = createPeer(data.userId, stream, false);
+        peers[data.userId] = peer;
+      }
+      try {
+        peer.signal(data.signal);
+      } catch (err) {
+        console.error("خطأ أثناء peer.signal:", err);
       }
     });
 
-    // المستخدم يغادر
     socket.on("user-disconnected", userId => {
+      console.log("مستخدم غادر:", userId);
       if (peers[userId]) {
-        peers[userId].close();
+        peers[userId].destroy();
         delete peers[userId];
       }
     });
   })
-  .catch(err => console.error("خطأ في الوصول للكاميرا أو الميكروفون:", err));
+  .catch(err => console.error("خطأ في الحصول على MediaStream:", err));
 
-// دالة إنشاء اتصال WebRTC
-function connectToNewUser(userId, stream) {
-  const peer = new RTCPeerConnection();
-  peers[userId] = peer;
+// دالة إنشاء Simple-Peer
+function createPeer(userId, stream, initiator) {
+  console.log("إنشاء Peer:", userId, "initiator=", initiator);
+  const peer = new SimplePeer({ initiator, trickle: false, stream });
 
-  stream.getTracks().forEach(track => peer.addTrack(track, stream));
+  peer.on("signal", signal => {
+    console.log("Peer signal:", userId, signal);
+    socket.emit("signal", { userId, signal });
+  });
 
-  const video = document.createElement("video");
-  video.autoplay = true;
+  peer.on("stream", remoteStream => {
+    console.log("تم استقبال Stream من:", userId);
+    addVideoStream(remoteStream, `👤 ${userId}`);
+  });
 
-  peer.ontrack = e => addVideoStream(e.streams[0], `👤 ${userId}`);
-  peer.onicecandidate = e => {
-    if (e.candidate) socket.emit("signal", { userId, signal: e.candidate });
-  };
+  peer.on("error", err => console.error("Peer error:", err));
 
-  // إنشاء offer بعد الانضمام
-  peer.createOffer().then(offer => peer.setLocalDescription(offer))
-      .then(() => socket.emit("signal", { userId, signal: peer.localDescription }));
+  return peer;
 }
 
-// دالة عرض الفيديو
 function addVideoStream(stream, label) {
+  console.log("عرض فيديو:", label);
   const video = document.createElement("video");
   video.srcObject = stream;
   video.autoplay = true;
@@ -81,7 +83,6 @@ function addVideoStream(stream, label) {
 
   const container = document.createElement("div");
   container.appendChild(video);
-  container.appendChild(document.createElement("br"));
   const nameTag = document.createElement("span");
   nameTag.innerText = label;
   container.appendChild(nameTag);
@@ -89,7 +90,6 @@ function addVideoStream(stream, label) {
   videoGrid.appendChild(container);
 }
 
-// نسخ الرابط
 function copyLink() {
   navigator.clipboard.writeText(window.location.href);
   alert("تم نسخ الرابط ✅");
