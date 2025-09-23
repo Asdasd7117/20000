@@ -8,23 +8,18 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-// الصفحة الرئيسية تعرض index.html مباشرة
-app.get("/", (req, res) => {
+// صفحة البداية و أي رابط /room/:roomId → تعرض index.html
+app.get(["/", "/room/:roomId"], (req, res) => {
   res.sendFile(process.cwd() + "/public/index.html");
 });
 
-// صفحة الغرفة
-app.get("/room/:roomId", (req, res) => {
-  res.sendFile(process.cwd() + "/public/index.html");
-});
-
-// إدارة الغرف والمستخدمين
-io.on("connection", (socket) => {
-  socket.on("join-room", (roomId) => {
+// Socket.IO
+io.on("connection", socket => {
+  socket.on("join-room", roomId => {
     socket.join(roomId);
     socket.to(roomId).emit("user-connected", socket.id);
 
-    socket.on("signal", (data) => {
+    socket.on("signal", data => {
       io.to(data.userId).emit("signal", { userId: socket.id, signal: data.signal });
     });
 
