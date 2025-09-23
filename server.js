@@ -1,40 +1,38 @@
-import express from "express";
-import { createServer } from "http";
-import { Server } from "socket.io";
-import { v4 as uuidv4 } from "uuid";
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
-const server = createServer(app);
+const server = http.createServer(app);
 const io = new Server(server);
 
-// ملفات الواجهة
 app.use(express.static("public"));
 
-// الصفحة الرئيسية → تعطي index.html
-app.get(["/", "/room/:roomId"], (req, res) => {
-  res.sendFile(process.cwd() + "/public/index.html");
-});
+io.on("connection", (socket) => {
+  console.log("🔗 مستخدم جديد:", socket.id);
 
-// Socket.IO
-io.on("connection", socket => {
-  console.log("🔌 مستخدم متصل:", socket.id);
-
-  socket.on("join-room", roomId => {
-    console.log(`📥 ${socket.id} انضم إلى الغرفة ${roomId}`);
+  socket.on("join-room", (roomId) => {
     socket.join(roomId);
-    socket.to(roomId).emit("user-connected", socket.id);
+    console.log(`📌 المستخدم ${socket.id} دخل الغرفة: ${roomId}`);
+    socket.to(roomId).emit("user-joined", socket.id);
+  });
 
-    socket.on("signal", data => {
-      console.log(`📡 إشارة من ${socket.id} إلى ${data.userId}`, data.signal?.type || data.signal?.candidate ? "candidate" : "unknown");
-      io.to(data.userId).emit("signal", { userId: socket.id, signal: data.signal });
-    });
+  socket.on("offer", (data) => {
+    socket.to(data.room).emit("offer", { sdp: data.sdp, from: socket.id });
+  });
 
-    socket.on("disconnect", () => {
-      console.log(`❌ ${socket.id} غادر الغرفة ${roomId}`);
-      socket.to(roomId).emit("user-disconnected", socket.id);
-    });
+  socket.on("answer", (data) => {
+    socket.to(data.room).emit("answer", { sdp: data.sdp, from: socket.id });
+  });
+
+  socket.on("candidate", (data) => {
+    socket.to(data.room).emit("candidate", { candidate: data.candidate, from: socket.id });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("❌ مستخدم خرج:", socket.id);
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 السيرفر شغال على البورت ${PORT}`));
