@@ -10,14 +10,14 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-// الرابط الأساسي "/" → إنشاء غرفة جديدة وإرسال roomId عبر query
+// توجيه فوري لغرفة جديدة قبل تحميل أي محتوى
 app.get("/", (req, res) => {
   const roomId = uuidV4();
-  res.redirect(`/room?roomId=${roomId}`);
+  res.redirect(302, `/room/${roomId}`);
 });
 
-// فتح صفحة الغرفة
-app.get("/room", (req, res) => {
+// فتح أي غرفة مباشرة
+app.get("/room/:roomId", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "room.html"));
 });
 
