@@ -1,27 +1,19 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <title>Meet App</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>دخول الغرفة</title>
 </head>
 <body>
-  <h1>🔗 رابط الغرفة</h1>
-  <div id="roomInfo">
-    <input type="text" id="roomLink" readonly>
-    <button onclick="copyLink()">نسخ الرابط</button>
-  </div>
+<h2>إنشاء أو الانضمام لغرفة</h2>
+<input type="text" id="roomId" placeholder="أدخل معرف الغرفة">
+<button onclick="joinRoom()">دخول</button>
 
-  <div id="videos"></div>
-
-  <div id="controls">
-    <input id="chatInput" placeholder="اكتب رسالة...">
-    <button onclick="sendMessage()">إرسال</button>
-  </div>
-
-  <div id="chatBox"></div>
-
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="script.js"></script>
+<script>
+function joinRoom() {
+  let roomId = document.getElementById("roomId").value || crypto.randomUUID();
+  window.location.href = `/room/${roomId}`;
+}
+</script>
 </body>
 </html>
