@@ -10,31 +10,27 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-// الرابط الأساسي → تحويل مباشر لغرفة جديدة
+// توجيه فوري لغرفة جديدة قبل تحميل أي محتوى
 app.get("/", (req, res) => {
   const roomId = uuidV4();
-  res.redirect(`/room/${roomId}`);
+  res.redirect(302, `/room/${roomId}`);
 });
 
-// أي رابط /room/:roomId يفتح room.html
+// فتح أي غرفة مباشرة
 app.get("/room/:roomId", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "room.html"));
 });
 
+// WebSocket
 io.on("connection", (socket) => {
-  console.log("🔗 مستخدم جديد:", socket.id);
-
   socket.on("join-room", (roomId) => {
     socket.join(roomId);
-    console.log(`📌 ${socket.id} دخل الغرفة: ${roomId}`);
     socket.to(roomId).emit("user-joined", socket.id);
   });
 
   socket.on("offer", (data) => socket.to(data.room).emit("offer", { sdp: data.sdp, from: socket.id }));
   socket.on("answer", (data) => socket.to(data.room).emit("answer", { sdp: data.sdp, from: socket.id }));
   socket.on("candidate", (data) => socket.to(data.room).emit("candidate", { candidate: data.candidate, from: socket.id }));
-
-  socket.on("disconnect", () => console.log("❌ مستخدم خرج:", socket.id));
 });
 
 const PORT = process.env.PORT || 3000;
