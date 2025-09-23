@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>غرفة الفيديو</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <h1>🔗 رابط الغرفة</h1>
+  <input type="text" id="roomLink" readonly>
+  <button onclick="copyLink()">نسخ الرابط</button>
+
+  <div id="video-grid"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="/script.js"></script>
+</body>
+</html>
