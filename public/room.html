@@ -5,15 +5,16 @@
   <title>غرفة الفيديو</title>
   <style>
     body { background:#111; color:#fff; text-align:center; font-family:Arial; }
+    #videos { display:flex; justify-content:center; flex-wrap:wrap; margin-top:20px; }
     video { width:45%; margin:10px; border:2px solid #0f0; border-radius:10px; display:none; }
-    #videos { display:flex; justify-content:center; flex-wrap:wrap; }
     #linkBox { margin:20px; padding:10px; background:#222; border:1px solid #0f0; border-radius:8px; }
     button { padding:5px 10px; margin-top:5px; border:none; border-radius:5px; cursor:pointer; }
+    #status { margin-top:10px; }
   </style>
 </head>
 <body>
   <h2>📹 غرفة الفيديو</h2>
-  
+
   <div id="linkBox">
     🔗 رابط غرفتك: 
     <input id="roomLink" type="text" readonly style="width:60%; text-align:center;">
@@ -32,22 +33,22 @@
   <script>
     const socket = io();
     const roomId = window.location.pathname.split("/").pop();
-    document.getElementById("roomLink").value = window.location.href;
 
     const myVideo = document.getElementById("myVideo");
     const remoteVideo = document.getElementById("remoteVideo");
     const statusEl = document.getElementById("status");
+    const roomLinkInput = document.getElementById("roomLink");
+
+    roomLinkInput.value = window.location.href;
 
     let localStream;
     let peerConnection;
+    const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
-    const config = {
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-    };
-
-    // انضم للغرفة
+    // انضم للغرفة مباشرة
     socket.emit("join-room", roomId);
 
+    // تابع دخول شخص آخر
     socket.on("user-joined", async (userId) => {
       statusEl.textContent = "👥 شخص آخر انضم، بدأ الاتصال...";
       await startCall(userId);
@@ -63,7 +64,6 @@
     });
 
     socket.on("answer", async (data) => {
-      console.log("📥 استلمت جواب من:", data.from);
       await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
     });
 
@@ -77,9 +77,10 @@
 
     async function startCall(userId) {
       if (!localStream) {
+        // تشغيل الكاميرا فقط عند وجود شخص آخر
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         myVideo.srcObject = localStream;
-        myVideo.style.display = "block"; // إظهار الفيديو المحلي
+        myVideo.style.display = "block";
       }
 
       if (!peerConnection) {
@@ -93,12 +94,10 @@
 
         peerConnection.ontrack = (event) => {
           remoteVideo.srcObject = event.streams[0];
-          remoteVideo.style.display = "block"; // إظهار فيديو الطرف الآخر
+          remoteVideo.style.display = "block";
         };
 
-        localStream.getTracks().forEach(track => {
-          peerConnection.addTrack(track, localStream);
-        });
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
       }
 
       if (userId) {
@@ -109,9 +108,8 @@
     }
 
     function copyLink() {
-      const copyText = document.getElementById("roomLink");
-      copyText.select();
-      copyText.setSelectionRange(0, 99999);
+      roomLinkInput.select();
+      roomLinkInput.setSelectionRange(0, 99999);
       document.execCommand("copy");
       alert("✅ تم نسخ رابط الغرفة");
     }
