@@ -1,15 +1,44 @@
 <!DOCTYPE html>
 <html lang="ar">
-<head><meta charset="UTF-8"><title>دخول الغرفة</title></head>
+<head>
+<meta charset="UTF-8">
+<title>دخول الغرفة</title>
+<style>
+body { font-family: Arial, sans-serif; text-align:center; background:#111; color:#fff; }
+#roomLink { width: 80%; padding:10px; font-size:16px; margin-top:10px; }
+button { padding:10px 20px; margin-top:10px; cursor:pointer; font-size:16px; }
+</style>
+</head>
 <body>
 <h2>إنشاء/الانضمام لغرفة</h2>
 <input id="roomId" placeholder="أدخل معرف الغرفة">
 <button onclick="joinRoom()">دخول</button>
 
+<div id="linkContainer" style="display:none;">
+  <p>رابط غرفتك:</p>
+  <input id="roomLink" readonly>
+  <button onclick="copyLink()">نسخ الرابط</button>
+</div>
+
 <script>
 function joinRoom(){
-  let roomId=document.getElementById("roomId").value||crypto.randomUUID();
-  window.location.href=`/room/${roomId}`;
+  let roomId=document.getElementById("roomId").value || crypto.randomUUID();
+  const roomURL = `${window.location.origin}/room/${roomId}`;
+
+  // عرض رابط الغرفة
+  document.getElementById("linkContainer").style.display = "block";
+  document.getElementById("roomLink").value = roomURL;
+
+  // التوجيه بعد ثانية واحدة (اختياري)
+  setTimeout(()=>{ window.location.href = roomURL; }, 1000);
+}
+
+function copyLink(){
+  const linkInput = document.getElementById("roomLink");
+  linkInput.select();
+  linkInput.setSelectionRange(0, 99999);
+  document.execCommand("copy");
+  alert("تم نسخ رابط الغرفة!");
 }
 </script>
 </body>
