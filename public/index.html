@@ -9,10 +9,17 @@
   <h1>🔗 رابط الغرفة</h1>
   <div id="roomInfo">
     <input type="text" id="roomLink" readonly>
-    <button onclick="navigator.clipboard.writeText(document.getElementById('roomLink').value)">نسخ الرابط</button>
+    <button onclick="copyLink()">نسخ الرابط</button>
   </div>
 
-  <div id="video-grid"></div>
+  <div id="videos"></div>
+
+  <div id="controls">
+    <input id="chatInput" placeholder="اكتب رسالة...">
+    <button onclick="sendMessage()">إرسال</button>
+  </div>
+
+  <div id="chatBox"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
