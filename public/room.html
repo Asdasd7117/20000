@@ -1,119 +1,103 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <title>غرفة الفيديو</title>
-  <style>
-    body { background:#111; color:#fff; text-align:center; font-family:Arial; }
-    #videos { display:flex; justify-content:center; flex-wrap:wrap; margin-top:20px; }
-    video { width:45%; margin:10px; border:2px solid #0f0; border-radius:10px; display:none; }
-    #linkBox { margin:20px; padding:10px; background:#222; border:1px solid #0f0; border-radius:8px; }
-    button { padding:5px 10px; margin-top:5px; border:none; border-radius:5px; cursor:pointer; }
-    #status { margin-top:10px; }
-  </style>
+<meta charset="UTF-8">
+<title>غرفة الفيديو</title>
+<style>
+body { background:#111; color:#fff; font-family:Arial; text-align:center; }
+#videos { display:flex; flex-wrap:wrap; justify-content:center; }
+video { width:300px; margin:5px; border-radius:10px; border:2px solid #0f0; }
+</style>
 </head>
 <body>
-  <h2>📹 غرفة الفيديو</h2>
+<h2>غرفة الفيديو</h2>
+<div id="videos"></div>
 
-  <div id="linkBox">
-    🔗 رابط غرفتك: 
-    <input id="roomLink" type="text" readonly style="width:60%; text-align:center;">
-    <br>
-    <button onclick="copyLink()">نسخ الرابط</button>
-  </div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket=io();
+const roomId=window.location.pathname.split("/").pop();
+const videosDiv=document.getElementById("videos");
+const peers={};
+let localStream;
 
-  <p id="status">🚶 أنت وحدك الآن في الغرفة، انتظر شخص آخر للانضمام</p>
+// STUN + TURN مجاني
+const config={
+  iceServers:[
+    { urls:"stun:stun.l.google.com:19302" },
+    { urls:"turn:openrelay.metered.ca:443", username:"openrelayproject", credential:"openrelayproject" }
+  ]
+};
 
-  <div id="videos">
-    <video id="myVideo" autoplay playsinline muted></video>
-    <video id="remoteVideo" autoplay playsinline></video>
-  </div>
+// إضافة فيديو
+function addVideo(stream,id){
+  let video=document.getElementById(id);
+  if(!video){
+    video=document.createElement("video");
+    video.id=id;
+    video.autoplay=true;
+    video.playsInline=true;
+    videosDiv.appendChild(video);
+  }
+  video.srcObject=stream;
+}
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    const roomId = window.location.pathname.split("/").pop();
+// الحصول على كاميرا/ميكروفون
+navigator.mediaDevices.getUserMedia({video:true,audio:true})
+.then(stream=>{
+  localStream=stream;
+  addVideo(stream,"me");
+  socket.emit("join-room",roomId);
+})
+.catch(err=>console.error("خطأ بالكاميرا/ميكروفون:",err));
 
-    const myVideo = document.getElementById("myVideo");
-    const remoteVideo = document.getElementById("remoteVideo");
-    const statusEl = document.getElementById("status");
-    const roomLinkInput = document.getElementById("roomLink");
+function createPeer(targetId,initiator){
+  const pc=new RTCPeerConnection(config);
+  localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
 
-    // عرض الرابط فورًا بدون تحديث
-    roomLinkInput.value = window.location.href;
+  pc.ontrack=event=>addVideo(event.streams[0],targetId);
 
-    let localStream;
-    let peerConnection;
-    const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+  pc.onicecandidate=event=>{
+    if(event.candidate)
+      socket.emit("signal",{to:targetId,signal:{candidate:event.candidate}});
+  };
+  return pc;
+}
 
-    // انضم للغرفة مباشرة
-    socket.emit("join-room", roomId);
+// استقبال مستخدمين جدد
+socket.on("user-joined",userId=>{
+  const pc=createPeer(userId,true);
+  peers[userId]=pc;
+  pc.createOffer().then(offer=>{
+    pc.setLocalDescription(offer);
+    socket.emit("signal",{to:userId,signal:{sdp:offer}});
+  });
+});
 
-    // عند دخول شخص آخر
-    socket.on("user-joined", async (userId) => {
-      statusEl.textContent = "👥 شخص آخر انضم، بدأ الاتصال...";
-      await startCall(userId);
-    });
+// استقبال إشارات
+socket.on("signal",async data=>{
+  let pc=peers[data.from];
+  if(!pc){ pc=createPeer(data.from,false); peers[data.from]=pc; }
 
-    socket.on("offer", async (data) => {
-      statusEl.textContent = "📥 استلمت عرض اتصال";
-      await startCall(data.from);
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-      const answer = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answer);
-      socket.emit("answer", { sdp: answer, room: roomId });
-    });
-
-    socket.on("answer", async (data) => {
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-    });
-
-    socket.on("candidate", async (data) => {
-      try {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-      } catch (err) {
-        console.error("خطأ في إضافة candidate:", err);
-      }
-    });
-
-    async function startCall(userId) {
-      if (!localStream) {
-        // تشغيل الكاميرا فقط عند وجود شخص آخر
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        myVideo.srcObject = localStream;
-        myVideo.style.display = "block";
-      }
-
-      if (!peerConnection) {
-        peerConnection = new RTCPeerConnection(config);
-
-        peerConnection.onicecandidate = (event) => {
-          if (event.candidate) {
-            socket.emit("candidate", { candidate: event.candidate, room: roomId });
-          }
-        };
-
-        peerConnection.ontrack = (event) => {
-          remoteVideo.srcObject = event.streams[0];
-          remoteVideo.style.display = "block";
-        };
-
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-      }
-
-      if (userId) {
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        socket.emit("offer", { sdp: offer, room: roomId });
-      }
+  if(data.signal.sdp){
+    await pc.setRemoteDescription(new RTCSessionDescription(data.signal.sdp));
+    if(data.signal.sdp.type==="offer"){
+      const answer=await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socket.emit("signal",{to:data.from,signal:{sdp:answer}});
     }
+  } else if(data.signal.candidate){
+    try{ await pc.addIceCandidate(new RTCIceCandidate(data.signal.candidate)); }
+    catch(err){ console.error(err); }
+  }
+});
 
-    function copyLink() {
-      roomLinkInput.select();
-      roomLinkInput.setSelectionRange(0, 99999);
-      document.execCommand("copy");
-      alert("✅ تم نسخ رابط الغرفة");
-    }
-  </script>
+// إزالة المستخدم عند الخروج
+socket.on("user-left",userId=>{
+  if(peers[userId]){ peers[userId].close(); delete peers[userId]; }
+  const video=document.getElementById(userId);
+  if(video) video.remove();
+});
+</script>
 </body>
 </html>
