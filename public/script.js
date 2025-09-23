@@ -2,33 +2,47 @@ const socket = io();
 const videoGrid = document.getElementById("videos");
 const peers = {};
 
-// استخراج معرف الغرفة من الرابط
+// استخراج roomId من الرابط
 let roomId = window.location.pathname.split("/")[2];
 if (!roomId) {
-  roomId = crypto.randomUUID(); // لكل زائر UUID مستقل
+  roomId = crypto.randomUUID();
   window.history.replaceState(null, "Room", `/room/${roomId}`);
 }
+
+// عرض الرابط
 document.getElementById("roomLink").value = window.location.href;
 
-// إعداد الفيديو المحلي
+// أول خطوة: الحصول على MediaStream قبل الانضمام للغرفة
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
     addVideoStream(stream, "أنا");
 
-    // **الانضمام للغرفة بعد أن يكون الفيديو جاهز**
+    // الانضمام للغرفة بعد تجهيز الفيديو
     socket.emit("join-room", roomId);
 
     // استقبال مستخدمين جدد
     socket.on("user-connected", userId => connectToNewUser(userId, stream));
 
-    // استقبال الإشارات
+    // استقبال إشارات WebRTC
     socket.on("signal", data => {
-      if (peers[data.userId]) {
-        peers[data.userId].addIceCandidate(new RTCIceCandidate(data.signal));
+      if (!peers[data.userId]) return;
+
+      const peer = peers[data.userId];
+      if (data.signal.type === "offer") {
+        peer.setRemoteDescription(new RTCSessionDescription(data.signal))
+          .then(() => peer.createAnswer())
+          .then(answer => peer.setLocalDescription(answer))
+          .then(() => {
+            socket.emit("signal", { userId: data.userId, signal: peer.localDescription });
+          });
+      } else if (data.signal.type === "answer") {
+        peer.setRemoteDescription(new RTCSessionDescription(data.signal));
+      } else if (data.signal.candidate) {
+        peer.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
       }
     });
 
-    // التعامل مع المغادرة
+    // المستخدم يغادر
     socket.on("user-disconnected", userId => {
       if (peers[userId]) {
         peers[userId].close();
@@ -38,24 +52,7 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   })
   .catch(err => console.error("خطأ في الوصول للكاميرا أو الميكروفون:", err));
 
-// دالة إضافة الفيديو
-function addVideoStream(stream, label) {
-  const video = document.createElement("video");
-  video.srcObject = stream;
-  video.autoplay = true;
-  video.playsInline = true;
-
-  const container = document.createElement("div");
-  container.appendChild(video);
-  container.appendChild(document.createElement("br"));
-  const nameTag = document.createElement("span");
-  nameTag.innerText = label;
-  container.appendChild(nameTag);
-
-  videoGrid.appendChild(container);
-}
-
-// دالة إنشاء اتصال WebRTC مع مستخدم جديد
+// دالة إنشاء اتصال WebRTC
 function connectToNewUser(userId, stream) {
   const peer = new RTCPeerConnection();
   peers[userId] = peer;
@@ -70,9 +67,26 @@ function connectToNewUser(userId, stream) {
     if (e.candidate) socket.emit("signal", { userId, signal: e.candidate });
   };
 
-  // إنشاء offer فقط بعد الانضمام للغرفة
+  // إنشاء offer بعد الانضمام
   peer.createOffer().then(offer => peer.setLocalDescription(offer))
       .then(() => socket.emit("signal", { userId, signal: peer.localDescription }));
+}
+
+// دالة عرض الفيديو
+function addVideoStream(stream, label) {
+  const video = document.createElement("video");
+  video.srcObject = stream;
+  video.autoplay = true;
+  video.playsInline = true;
+
+  const container = document.createElement("div");
+  container.appendChild(video);
+  container.appendChild(document.createElement("br"));
+  const nameTag = document.createElement("span");
+  nameTag.innerText = label;
+  container.appendChild(nameTag);
+
+  videoGrid.appendChild(container);
 }
 
 // نسخ الرابط
