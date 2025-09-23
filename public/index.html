@@ -1,94 +1,16 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<title>دخول الغرفة</title>
-<style>
-  /* --- ستايل الجسم --- */
-  body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Cairo', Arial, sans-serif;
-    background: linear-gradient(135deg, #4facfe, #00f2fe);
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: #fff;
-    overflow: hidden;
-  }
-
-  h2 {
-    font-size: 2rem;
-    margin-bottom: 20px;
-    text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-  }
-
-  input {
-    padding: 14px 18px;
-    font-size: 1rem;
-    border-radius: 12px;
-    border: none;
-    margin-bottom: 15px;
-    outline: none;
-    width: 300px;
-  }
-
-  button {
-    padding: 14px 24px;
-    font-size: 1rem;
-    border-radius: 12px;
-    border: none;
-    background: #ff6a00;
-    color: #fff;
-    cursor: pointer;
-    transition: 0.3s;
-  }
-
-  button:hover {
-    background: #ff9e3c;
-  }
-
-  /* --- النص أسفل حقل البحث --- */
-  .info-text {
-    margin-top: 25px;
-    text-align: center;
-    font-size: 1.2rem;
-    line-height: 1.8rem;
-    font-weight: bold;
-    background: linear-gradient(90deg, #ff0, #f0f, #0ff, #0f0, #f00);
-    background-size: 400% 100%;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: gradientMove 6s linear infinite;
-  }
-
-  @keyframes gradientMove {
-    0%{background-position:0% 50%;}
-    50%{background-position:100% 50%;}
-    100%{background-position:0% 50%;}
-  }
-</style>
-</head>
+<html lang="ar">
+<head><meta charset="UTF-8"><title>دخول الغرفة</title></head>
 <body>
-
-<h2>إنشاء أو الانضمام لغرفة</h2>
-<input type="text" id="roomId" placeholder="أدخل معرف الغرفة المؤقتة">
+<h2>إنشاء/الانضمام لغرفة</h2>
+<input id="roomId" placeholder="أدخل معرف الغرفة">
 <button onclick="joinRoom()">دخول</button>
 
-<!-- النص التوضيحي أسفل البحث -->
-<div class="info-text">
-  اتصال آمن – جودة عالية – غرف متعددة <br>
-  أكتب أي معرف لغرفتك المؤقته وشاركها أصدقائك للدردشة الجماعية
-</div>
-
 <script>
-function joinRoom() {
-  let roomId = document.getElementById("roomId").value || crypto.randomUUID();
-  window.location.href = `/room/${roomId}`;
+function joinRoom(){
+  let roomId=document.getElementById("roomId").value||crypto.randomUUID();
+  window.location.href=`/room/${roomId}`;
 }
 </script>
-
 </body>
 </html>
