@@ -39,6 +39,7 @@
     const statusEl = document.getElementById("status");
     const roomLinkInput = document.getElementById("roomLink");
 
+    // عرض الرابط فورًا بدون تحديث
     roomLinkInput.value = window.location.href;
 
     let localStream;
@@ -48,7 +49,7 @@
     // انضم للغرفة مباشرة
     socket.emit("join-room", roomId);
 
-    // تابع دخول شخص آخر
+    // عند دخول شخص آخر
     socket.on("user-joined", async (userId) => {
       statusEl.textContent = "👥 شخص آخر انضم، بدأ الاتصال...";
       await startCall(userId);
