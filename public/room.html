@@ -31,22 +31,23 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
-    const roomId = window.location.pathname.split("/").pop();
+    // استخراج roomId مباشرة من query
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get("roomId");
 
+    const roomLinkInput = document.getElementById("roomLink");
+    roomLinkInput.value = window.location.origin + "/room?roomId=" + roomId;
+
+    const socket = io();
     const myVideo = document.getElementById("myVideo");
     const remoteVideo = document.getElementById("remoteVideo");
     const statusEl = document.getElementById("status");
-    const roomLinkInput = document.getElementById("roomLink");
-
-    // عرض الرابط فورًا بدون تحديث
-    roomLinkInput.value = window.location.href;
 
     let localStream;
     let peerConnection;
     const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
-    // انضم للغرفة مباشرة
+    // الانضمام للغرفة فور التحميل
     socket.emit("join-room", roomId);
 
     // عند دخول شخص آخر
@@ -78,7 +79,7 @@
 
     async function startCall(userId) {
       if (!localStream) {
-        // تشغيل الكاميرا فقط عند وجود شخص آخر
+        // تشغيل الكاميرا فقط عند دخول شخص آخر
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         myVideo.srcObject = localStream;
         myVideo.style.display = "block";
