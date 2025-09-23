@@ -4,35 +4,26 @@
   <meta charset="UTF-8">
   <title>غرفة الفيديو</title>
   <style>
-    body {
-      background: #111;
-      color: #fff;
-      text-align: center;
-      font-family: Arial, sans-serif;
-    }
-    #videos {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-top: 20px;
-    }
-    video {
-      width: 45%;
-      margin: 10px;
-      border: 2px solid #0f0;
-      border-radius: 10px;
-    }
-    #waiting {
-      margin-top: 50px;
-      font-size: 20px;
-      color: #aaa;
-    }
+    body { background:#111; color:#fff; text-align:center; font-family:Arial; }
+    video { width:45%; margin:10px; border:2px solid #0f0; border-radius:10px; display:none; }
+    #videos { display:flex; justify-content:center; flex-wrap:wrap; }
+    #linkBox { margin:20px; padding:10px; background:#222; border:1px solid #0f0; border-radius:8px; }
+    button { padding:5px 10px; margin-top:5px; border:none; border-radius:5px; cursor:pointer; }
   </style>
 </head>
 <body>
   <h2>📹 غرفة الفيديو</h2>
-  <div id="waiting">⏳ في انتظار شخص آخر للانضمام...</div>
-  <div id="videos" style="display:none;">
+  
+  <div id="linkBox">
+    🔗 رابط غرفتك: 
+    <input id="roomLink" type="text" readonly style="width:60%; text-align:center;">
+    <br>
+    <button onclick="copyLink()">نسخ الرابط</button>
+  </div>
+
+  <p id="status">🚶 أنت وحدك الآن في الغرفة، انتظر شخص آخر للانضمام</p>
+
+  <div id="videos">
     <video id="myVideo" autoplay playsinline muted></video>
     <video id="remoteVideo" autoplay playsinline></video>
   </div>
@@ -41,11 +32,11 @@
   <script>
     const socket = io();
     const roomId = window.location.pathname.split("/").pop();
+    document.getElementById("roomLink").value = window.location.href;
 
     const myVideo = document.getElementById("myVideo");
     const remoteVideo = document.getElementById("remoteVideo");
-    const videosDiv = document.getElementById("videos");
-    const waitingMsg = document.getElementById("waiting");
+    const statusEl = document.getElementById("status");
 
     let localStream;
     let peerConnection;
@@ -54,16 +45,16 @@
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     };
 
-    // الانضمام للغرفة
+    // انضم للغرفة
     socket.emit("join-room", roomId);
 
     socket.on("user-joined", async (userId) => {
-      console.log("📢 مستخدم آخر دخل:", userId);
-      startCall(userId);
+      statusEl.textContent = "👥 شخص آخر انضم، بدأ الاتصال...";
+      await startCall(userId);
     });
 
     socket.on("offer", async (data) => {
-      console.log("📥 استلمت عرض من:", data.from);
+      statusEl.textContent = "📥 استلمت عرض اتصال";
       await startCall(data.from);
       await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
       const answer = await peerConnection.createAnswer();
@@ -77,48 +68,52 @@
     });
 
     socket.on("candidate", async (data) => {
-      if (peerConnection) {
-        try {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-          console.log("📥 تمت إضافة candidate");
-        } catch (err) {
-          console.error("❌ خطأ في candidate:", err);
-        }
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+      } catch (err) {
+        console.error("خطأ في إضافة candidate:", err);
       }
     });
 
     async function startCall(userId) {
-      // أخفي رسالة الانتظار وأظهر الفيديو
-      waitingMsg.style.display = "none";
-      videosDiv.style.display = "flex";
-
       if (!localStream) {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         myVideo.srcObject = localStream;
+        myVideo.style.display = "block"; // إظهار الفيديو المحلي
       }
 
-      peerConnection = new RTCPeerConnection(config);
+      if (!peerConnection) {
+        peerConnection = new RTCPeerConnection(config);
 
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit("candidate", { candidate: event.candidate, room: roomId });
-        }
-      };
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("candidate", { candidate: event.candidate, room: roomId });
+          }
+        };
 
-      peerConnection.ontrack = (event) => {
-        console.log("📺 استلمت فيديو من الطرف الآخر");
-        remoteVideo.srcObject = event.streams[0];
-      };
+        peerConnection.ontrack = (event) => {
+          remoteVideo.srcObject = event.streams[0];
+          remoteVideo.style.display = "block"; // إظهار فيديو الطرف الآخر
+        };
 
-      localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
-      });
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
+      }
 
       if (userId) {
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
         socket.emit("offer", { sdp: offer, room: roomId });
       }
+    }
+
+    function copyLink() {
+      const copyText = document.getElementById("roomLink");
+      copyText.select();
+      copyText.setSelectionRange(0, 99999);
+      document.execCommand("copy");
+      alert("✅ تم نسخ رابط الغرفة");
     }
   </script>
 </body>
