@@ -10,13 +10,13 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-// عند الدخول على الرابط الأساسي → أنشئ غرفة جديدة
+// الرابط الأساسي → تحويل مباشر لغرفة جديدة
 app.get("/", (req, res) => {
   const roomId = uuidV4();
   res.redirect(`/room/${roomId}`);
 });
 
-// أي رابط غرفة يفتح نفس الصفحة room.html
+// أي رابط /room/:roomId يفتح room.html
 app.get("/room/:roomId", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "room.html"));
 });
@@ -30,21 +30,11 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("user-joined", socket.id);
   });
 
-  socket.on("offer", (data) => {
-    socket.to(data.room).emit("offer", { sdp: data.sdp, from: socket.id });
-  });
+  socket.on("offer", (data) => socket.to(data.room).emit("offer", { sdp: data.sdp, from: socket.id }));
+  socket.on("answer", (data) => socket.to(data.room).emit("answer", { sdp: data.sdp, from: socket.id }));
+  socket.on("candidate", (data) => socket.to(data.room).emit("candidate", { candidate: data.candidate, from: socket.id }));
 
-  socket.on("answer", (data) => {
-    socket.to(data.room).emit("answer", { sdp: data.sdp, from: socket.id });
-  });
-
-  socket.on("candidate", (data) => {
-    socket.to(data.room).emit("candidate", { candidate: data.candidate, from: socket.id });
-  });
-
-  socket.on("disconnect", () => {
-    console.log("❌ مستخدم خرج:", socket.id);
-  });
+  socket.on("disconnect", () => console.log("❌ مستخدم خرج:", socket.id));
 });
 
 const PORT = process.env.PORT || 3000;
