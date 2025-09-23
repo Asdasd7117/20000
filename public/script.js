@@ -1,44 +1,74 @@
 const socket = io();
 const videoGrid = document.getElementById("videos");
 const peers = {};
+let myStream;
 
 // استخراج معرف الغرفة من الرابط
 let roomId = window.location.pathname.split("/")[2];
 if (!roomId) {
-  roomId = crypto.randomUUID(); // لكل زائر UUID مستقل
+  roomId = crypto.randomUUID();
   window.history.replaceState(null, "Room", `/room/${roomId}`);
 }
 document.getElementById("roomLink").value = window.location.href;
 
-// إعداد الفيديو المحلي
+// الحصول على الفيديو والصوت
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
+    myStream = stream;
     addVideoStream(stream, "أنا");
 
-    // **الانضمام للغرفة بعد أن يكون الفيديو جاهز**
+    // الانضمام للغرفة بعد جاهزية stream
     socket.emit("join-room", roomId);
 
-    // استقبال مستخدمين جدد
-    socket.on("user-connected", userId => connectToNewUser(userId, stream));
+    // استقبال مستخدمين موجودين مسبقًا
+    socket.on("all-users", users => {
+      users.forEach(userId => {
+        const peer = createPeer(userId, socket.id, stream);
+        peers[userId] = peer;
+      });
+    });
 
-    // استقبال الإشارات
+    // استقبال signal من الآخرين
     socket.on("signal", data => {
-      if (peers[data.userId]) {
-        peers[data.userId].addIceCandidate(new RTCIceCandidate(data.signal));
+      const peer = peers[data.from];
+      if (peer) {
+        peer.signal(data.signal);
+      } else {
+        // إنشاء peer جديد إذا لم يكن موجود
+        const newPeer = addPeer(data.signal, data.from, stream);
+        peers[data.from] = newPeer;
       }
     });
 
-    // التعامل مع المغادرة
     socket.on("user-disconnected", userId => {
       if (peers[userId]) {
-        peers[userId].close();
+        peers[userId].destroy();
         delete peers[userId];
       }
     });
   })
-  .catch(err => console.error("خطأ في الوصول للكاميرا أو الميكروفون:", err));
+  .catch(err => console.error("خطأ في الكاميرا أو الميكروفون:", err));
 
-// دالة إضافة الفيديو
+// دوال WebRTC باستخدام Simple-Peer (أسهل وأضمن)
+function createPeer(userToSignal, callerId, stream) {
+  const peer = new SimplePeer({ initiator: true, trickle: false, stream });
+  peer.on("signal", signal => {
+    socket.emit("signal", { userId: userToSignal, signal, from: callerId });
+  });
+  peer.on("stream", remoteStream => addVideoStream(remoteStream, `👤 ${userToSignal}`));
+  return peer;
+}
+
+function addPeer(incomingSignal, callerId, stream) {
+  const peer = new SimplePeer({ initiator: false, trickle: false, stream });
+  peer.on("signal", signal => {
+    socket.emit("signal", { userId: callerId, signal, from: socket.id });
+  });
+  peer.on("stream", remoteStream => addVideoStream(remoteStream, `👤 ${callerId}`));
+  peer.signal(incomingSignal);
+  return peer;
+}
+
 function addVideoStream(stream, label) {
   const video = document.createElement("video");
   video.srcObject = stream;
@@ -47,7 +77,6 @@ function addVideoStream(stream, label) {
 
   const container = document.createElement("div");
   container.appendChild(video);
-  container.appendChild(document.createElement("br"));
   const nameTag = document.createElement("span");
   nameTag.innerText = label;
   container.appendChild(nameTag);
@@ -55,27 +84,6 @@ function addVideoStream(stream, label) {
   videoGrid.appendChild(container);
 }
 
-// دالة إنشاء اتصال WebRTC مع مستخدم جديد
-function connectToNewUser(userId, stream) {
-  const peer = new RTCPeerConnection();
-  peers[userId] = peer;
-
-  stream.getTracks().forEach(track => peer.addTrack(track, stream));
-
-  const video = document.createElement("video");
-  video.autoplay = true;
-
-  peer.ontrack = e => addVideoStream(e.streams[0], `👤 ${userId}`);
-  peer.onicecandidate = e => {
-    if (e.candidate) socket.emit("signal", { userId, signal: e.candidate });
-  };
-
-  // إنشاء offer فقط بعد الانضمام للغرفة
-  peer.createOffer().then(offer => peer.setLocalDescription(offer))
-      .then(() => socket.emit("signal", { userId, signal: peer.localDescription }));
-}
-
-// نسخ الرابط
 function copyLink() {
   navigator.clipboard.writeText(window.location.href);
   alert("تم نسخ الرابط ✅");
