@@ -30,9 +30,9 @@
     font-size: 1rem;
     border-radius: 12px;
     border: none;
-    margin-right: 10px;
+    margin-bottom: 15px;
     outline: none;
-    width: 270px;
+    width: 300px;
   }
 
   button {
@@ -50,40 +50,21 @@
     background: #ff9e3c;
   }
 
-  /* --- النص المتحرك أسفل الصفحة --- */
-  .marquee-container {
-    position: absolute;
-    bottom: 20px;
-    width: 100%;
-    overflow: hidden;
+  /* --- النص أسفل حقل البحث --- */
+  .info-text {
+    margin-top: 25px;
     text-align: center;
-  }
-
-  .marquee {
-    display: inline-block;
-    white-space: nowrap;
-    animation: moveText 12s linear infinite;
-    font-size: 2.2rem; /* أكبر حجم للنص */
-    font-weight: 900; /* خط سميك وواضح */
-    letter-spacing: 2px;
-    text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-  }
-
-  .marquee span {
-    margin: 0 40px;
+    font-size: 1.2rem;
+    line-height: 1.8rem;
+    font-weight: bold;
     background: linear-gradient(90deg, #ff0, #f0f, #0ff, #0f0, #f00);
     background-size: 400% 100%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    animation: colors 4s linear infinite;
+    animation: gradientMove 6s linear infinite;
   }
 
-  @keyframes moveText {
-    0% { transform: translateX(100%); }
-    100% { transform: translateX(-100%); }
-  }
-
-  @keyframes colors {
+  @keyframes gradientMove {
     0%{background-position:0% 50%;}
     50%{background-position:100% 50%;}
     100%{background-position:0% 50%;}
@@ -93,16 +74,13 @@
 <body>
 
 <h2>إنشاء أو الانضمام لغرفة</h2>
-<div>
-  <input type="text" id="roomId" placeholder="أدخل معرف الغرفة">
-  <button onclick="joinRoom()">دخول</button>
-</div>
+<input type="text" id="roomId" placeholder="أدخل معرف الغرفة المؤقتة">
+<button onclick="joinRoom()">دخول</button>
 
-<!-- النص المتحرك -->
-<div class="marquee-container">
-  <div class="marquee">
-    <span>اتصال آمن</span> <span>جودة عالية</span> <span>اتصال آمن</span> <span>جودة عالية</span>
-  </div>
+<!-- النص التوضيحي أسفل البحث -->
+<div class="info-text">
+  اتصال آمن – جودة عالية – غرف متعددة <br>
+  أكتب أي معرف لغرفتك المؤقته وشاركها أصدقائك للدردشة الجماعية
 </div>
 
 <script>
