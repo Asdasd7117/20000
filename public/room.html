@@ -6,11 +6,18 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <h1>🔗 رابط الغرفة</h1>
-  <input type="text" id="roomLink" readonly>
-  <button onclick="copyLink()">نسخ الرابط</button>
+  <header>
+    <input type="text" id="roomLink" readonly>
+    <button id="copyBtn" onclick="copyLink()">📋 نسخ الرابط</button>
+  </header>
 
-  <div id="video-grid"></div>
+  <main id="video-grid"></main>
+
+  <footer id="chat">
+    <input type="text" id="messageInput" placeholder="اكتب رسالة...">
+    <button id="sendBtn">إرسال</button>
+    <div id="messages"></div>
+  </footer>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
